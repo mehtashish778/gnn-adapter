@@ -1,0 +1,22 @@
+evaluation:
+  # Inputs
+  val_predictions_json: data/processed/experiments/gnn_adapter/val_predictions.json
+  test_predictions_json: data/processed/experiments/gnn_adapter/test_predictions.json
+  thresholds_json: data/processed/experiments/thresholds/per_class_thresholds.json
+
+  # Outputs
+  thresholds_output_json: data/processed/experiments/thresholds/per_class_thresholds.json
+  final_metrics_output_json: data/processed/experiments/final_eval/test_metrics.json
+  ablation_table_output_csv: data/processed/experiments/ablations/ablation_table.csv
+  report_output_md: reports/gnn_adapter/report.md
+
+  # Threshold tuning objective
+  objective: f1
+  threshold_search:
+    min: 0.05
+    max: 0.95
+    step: 0.05
+
+  # Reporting defaults
+  primary_metric: macro_f1
+  include_per_class_metrics: true

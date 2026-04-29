@@ -1,0 +1,20 @@
+{
+  "total_records": 7,
+  "valid_records": 6,
+  "failed_records": 1,
+  "top1_accuracy": 0.16666666666666666,
+  "top5_accuracy": 0.16666666666666666,
+  "average_confidence_gap": 0.03846153846153848,
+  "per_class_accuracy": {
+    "Atelectasis": 0.0,
+    "Cardiomegaly": 0.0,
+    "Effusion": 0.0,
+    "Pneumonia": 0.0,
+    "Edema": 0.0,
+    "Consolidation": 0.0,
+    "No Finding": 0.3333333333333333
+  },
+  "hard_error_count": 5,
+  "near_miss_count": 0,
+  "low_confidence_count": 3
+}

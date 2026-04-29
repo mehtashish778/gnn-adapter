@@ -1,0 +1,15 @@
+# CUDA-enabled PyTorch (CUDA 12.1 wheels)
+--extra-index-url https://download.pytorch.org/whl/cu121
+
+torch
+torchvision
+
+
+numpy
+pandas
+pyyaml
+tqdm
+scikit-learn
+gradio
+transformers
+pillow

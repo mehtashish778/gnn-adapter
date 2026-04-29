@@ -1,0 +1,31 @@
+training:
+  train_rows_json: data/processed/splits/train_rows.json
+  val_rows_json: data/processed/splits/val_rows.json
+  test_rows_json: data/processed/splits/test_rows.json
+  edge_index_json: data/processed/graph/edge_index.json
+  edge_weight_json: data/processed/graph/edge_weight.json
+  per_class_thresholds_json: data/processed/experiments/thresholds/per_class_thresholds.json
+  output_dir: data/processed/experiments/gnn_adapter
+
+  # Core model / optimization (defaults match scripts/07_train_gnn_adapter.py)
+  epochs: 80
+  lr: 0.0003
+  min_lr: 0.000001
+  hidden_dim: 32
+  alpha: 0.5
+
+  weight_decay: 0.0001
+  grad_clip_norm: 1.0
+  pos_weight_max: 100.0
+
+  # lr_scheduler: none | cosine | plateau
+  lr_scheduler: cosine
+  plateau_factor: 0.5
+  plateau_patience: 6
+  warmup_epochs: 2
+
+  # Checkpoint: val_bce (recommended; F1@0.5 often flat) | val_macro_f1_thr | val_macro_f1_05
+  best_metric: val_bce
+  early_stop_patience: 18
+
+  seed: 42

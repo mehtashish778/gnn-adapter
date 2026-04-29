@@ -1,0 +1,13 @@
+train_csv: data/raw/train.csv
+valid_csv: data/raw/valid.csv
+vlm_dir: data/outputs_vlm_corrected copy
+uncertain_policy: u_zeros
+join_key: path
+label_order:
+  - Atelectasis
+  - Cardiomegaly
+  - Effusion
+  - Pneumonia
+  - Edema
+  - Consolidation
+  - No Finding

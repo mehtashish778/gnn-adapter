@@ -1,0 +1,383 @@
+{
+  "summary": {
+    "hard_error_count": 5,
+    "near_miss_count": 0,
+    "low_confidence_count": 3,
+    "failed_inference_count": 1
+  },
+  "hard_errors": [
+    {
+      "image_id": "train/patient00001/study1/view1_frontal.jpg",
+      "path": "CheXpert-v1.0-small/train/patient00001/study1/view1_frontal.jpg",
+      "absolute_path": "/home/ashish/projects/mbzai/data/raw/train/patient00001/study1/view1_frontal.jpg",
+      "split": "train",
+      "ground_truth": "No Finding",
+      "scores": {
+        "Atelectasis": 0.3333333333333333,
+        "Cardiomegaly": 0.3333333333333333,
+        "Effusion": 0.13333333333333333,
+        "Pneumonia": 0.06666666666666667,
+        "Edema": 0.06666666666666667,
+        "Consolidation": 0.06666666666666667,
+        "No Finding": 0.0
+      },
+      "top_k": [
+        {
+          "label": "Atelectasis",
+          "score": 0.3333333333333333
+        },
+        {
+          "label": "Cardiomegaly",
+          "score": 0.3333333333333333
+        },
+        {
+          "label": "Effusion",
+          "score": 0.13333333333333333
+        },
+        {
+          "label": "Pneumonia",
+          "score": 0.06666666666666667
+        },
+        {
+          "label": "Edema",
+          "score": 0.06666666666666667
+        }
+      ],
+      "predicted": "Atelectasis",
+      "correct": false,
+      "rank_of_gt": 7,
+      "gt_in_top_k": false,
+      "gt_score": 0.0,
+      "confidence_gap": 0.0,
+      "gt_gap": 0.3333333333333333
+    },
+    {
+      "image_id": "train/patient00002/study1/view1_frontal.jpg",
+      "path": "CheXpert-v1.0-small/train/patient00002/study1/view1_frontal.jpg",
+      "absolute_path": "/home/ashish/projects/mbzai/data/raw/train/patient00002/study1/view1_frontal.jpg",
+      "split": "train",
+      "ground_truth": "Consolidation",
+      "scores": {
+        "Atelectasis": 0.14285714285714285,
+        "Cardiomegaly": 0.14285714285714285,
+        "Effusion": 0.14285714285714285,
+        "Pneumonia": 0.14285714285714285,
+        "Edema": 0.14285714285714285,
+        "Consolidation": 0.14285714285714285,
+        "No Finding": 0.14285714285714285
+      },
+      "top_k": [
+        {
+          "label": "Atelectasis",
+          "score": 0.14285714285714285
+        },
+        {
+          "label": "Cardiomegaly",
+          "score": 0.14285714285714285
+        },
+        {
+          "label": "Effusion",
+          "score": 0.14285714285714285
+        },
+        {
+          "label": "Pneumonia",
+          "score": 0.14285714285714285
+        },
+        {
+          "label": "Edema",
+          "score": 0.14285714285714285
+        }
+      ],
+      "predicted": "Atelectasis",
+      "correct": false,
+      "rank_of_gt": 6,
+      "gt_in_top_k": false,
+      "gt_score": 0.14285714285714285,
+      "confidence_gap": 0.0,
+      "gt_gap": 0.0
+    },
+    {
+      "image_id": "train/patient00004/study1/view1_frontal.jpg",
+      "path": "CheXpert-v1.0-small/train/patient00004/study1/view1_frontal.jpg",
+      "absolute_path": "/home/ashish/projects/mbzai/data/raw/train/patient00004/study1/view1_frontal.jpg",
+      "split": "train",
+      "ground_truth": "No Finding",
+      "scores": {
+        "Atelectasis": 0.14285714285714285,
+        "Cardiomegaly": 0.14285714285714285,
+        "Effusion": 0.14285714285714285,
+        "Pneumonia": 0.14285714285714285,
+        "Edema": 0.14285714285714285,
+        "Consolidation": 0.14285714285714285,
+        "No Finding": 0.14285714285714285
+      },
+      "top_k": [
+        {
+          "label": "Atelectasis",
+          "score": 0.14285714285714285
+        },
+        {
+          "label": "Cardiomegaly",
+          "score": 0.14285714285714285
+        },
+        {
+          "label": "Effusion",
+          "score": 0.14285714285714285
+        },
+        {
+          "label": "Pneumonia",
+          "score": 0.14285714285714285
+        },
+        {
+          "label": "Edema",
+          "score": 0.14285714285714285
+        }
+      ],
+      "predicted": "Atelectasis",
+      "correct": false,
+      "rank_of_gt": 7,
+      "gt_in_top_k": false,
+      "gt_score": 0.14285714285714285,
+      "confidence_gap": 0.0,
+      "gt_gap": 0.0
+    },
+    {
+      "image_id": "train/patient00002/study2/view1_frontal.jpg",
+      "path": "CheXpert-v1.0-small/train/patient00002/study2/view1_frontal.jpg",
+      "absolute_path": "/home/ashish/projects/mbzai/data/raw/train/patient00002/study2/view1_frontal.jpg",
+      "split": "train",
+      "ground_truth": "Consolidation",
+      "scores": {
+        "Atelectasis": 0.15384615384615385,
+        "Cardiomegaly": 0.23076923076923075,
+        "Effusion": 0.07692307692307693,
+        "Pneumonia": 0.07692307692307693,
+        "Edema": 0.07692307692307693,
+        "Consolidation": 0.07692307692307693,
+        "No Finding": 0.3076923076923077
+      },
+      "top_k": [
+        {
+          "label": "No Finding",
+          "score": 0.3076923076923077
+        },
+        {
+          "label": "Cardiomegaly",
+          "score": 0.23076923076923075
+        },
+        {
+          "label": "Atelectasis",
+          "score": 0.15384615384615385
+        },
+        {
+          "label": "Effusion",
+          "score": 0.07692307692307693
+        },
+        {
+          "label": "Pneumonia",
+          "score": 0.07692307692307693
+        }
+      ],
+      "predicted": "No Finding",
+      "correct": false,
+      "rank_of_gt": 7,
+      "gt_in_top_k": false,
+      "gt_score": 0.07692307692307693,
+      "confidence_gap": 0.07692307692307696,
+      "gt_gap": 0.23076923076923078
+    },
+    {
+      "image_id": "train/patient00003/study1/view1_frontal.jpg",
+      "path": "CheXpert-v1.0-small/train/patient00003/study1/view1_frontal.jpg",
+      "absolute_path": "/home/ashish/projects/mbzai/data/raw/train/patient00003/study1/view1_frontal.jpg",
+      "split": "train",
+      "ground_truth": "Edema",
+      "scores": {
+        "Atelectasis": 0.15384615384615385,
+        "Cardiomegaly": 0.23076923076923075,
+        "Effusion": 0.07692307692307693,
+        "Pneumonia": 0.07692307692307693,
+        "Edema": 0.07692307692307693,
+        "Consolidation": 0.07692307692307693,
+        "No Finding": 0.3076923076923077
+      },
+      "top_k": [
+        {
+          "label": "No Finding",
+          "score": 0.3076923076923077
+        },
+        {
+          "label": "Cardiomegaly",
+          "score": 0.23076923076923075
+        },
+        {
+          "label": "Atelectasis",
+          "score": 0.15384615384615385
+        },
+        {
+          "label": "Effusion",
+          "score": 0.07692307692307693
+        },
+        {
+          "label": "Pneumonia",
+          "score": 0.07692307692307693
+        }
+      ],
+      "predicted": "No Finding",
+      "correct": false,
+      "rank_of_gt": 6,
+      "gt_in_top_k": false,
+      "gt_score": 0.07692307692307693,
+      "confidence_gap": 0.07692307692307696,
+      "gt_gap": 0.23076923076923078
+    }
+  ],
+  "near_miss": [],
+  "low_confidence": [
+    {
+      "image_id": "train/patient00001/study1/view1_frontal.jpg",
+      "path": "CheXpert-v1.0-small/train/patient00001/study1/view1_frontal.jpg",
+      "absolute_path": "/home/ashish/projects/mbzai/data/raw/train/patient00001/study1/view1_frontal.jpg",
+      "split": "train",
+      "ground_truth": "No Finding",
+      "scores": {
+        "Atelectasis": 0.3333333333333333,
+        "Cardiomegaly": 0.3333333333333333,
+        "Effusion": 0.13333333333333333,
+        "Pneumonia": 0.06666666666666667,
+        "Edema": 0.06666666666666667,
+        "Consolidation": 0.06666666666666667,
+        "No Finding": 0.0
+      },
+      "top_k": [
+        {
+          "label": "Atelectasis",
+          "score": 0.3333333333333333
+        },
+        {
+          "label": "Cardiomegaly",
+          "score": 0.3333333333333333
+        },
+        {
+          "label": "Effusion",
+          "score": 0.13333333333333333
+        },
+        {
+          "label": "Pneumonia",
+          "score": 0.06666666666666667
+        },
+        {
+          "label": "Edema",
+          "score": 0.06666666666666667
+        }
+      ],
+      "predicted": "Atelectasis",
+      "correct": false,
+      "rank_of_gt": 7,
+      "gt_in_top_k": false,
+      "gt_score": 0.0,
+      "confidence_gap": 0.0,
+      "gt_gap": 0.3333333333333333
+    },
+    {
+      "image_id": "train/patient00002/study1/view1_frontal.jpg",
+      "path": "CheXpert-v1.0-small/train/patient00002/study1/view1_frontal.jpg",
+      "absolute_path": "/home/ashish/projects/mbzai/data/raw/train/patient00002/study1/view1_frontal.jpg",
+      "split": "train",
+      "ground_truth": "Consolidation",
+      "scores": {
+        "Atelectasis": 0.14285714285714285,
+        "Cardiomegaly": 0.14285714285714285,
+        "Effusion": 0.14285714285714285,
+        "Pneumonia": 0.14285714285714285,
+        "Edema": 0.14285714285714285,
+        "Consolidation": 0.14285714285714285,
+        "No Finding": 0.14285714285714285
+      },
+      "top_k": [
+        {
+          "label": "Atelectasis",
+          "score": 0.14285714285714285
+        },
+        {
+          "label": "Cardiomegaly",
+          "score": 0.14285714285714285
+        },
+        {
+          "label": "Effusion",
+          "score": 0.14285714285714285
+        },
+        {
+          "label": "Pneumonia",
+          "score": 0.14285714285714285
+        },
+        {
+          "label": "Edema",
+          "score": 0.14285714285714285
+        }
+      ],
+      "predicted": "Atelectasis",
+      "correct": false,
+      "rank_of_gt": 6,
+      "gt_in_top_k": false,
+      "gt_score": 0.14285714285714285,
+      "confidence_gap": 0.0,
+      "gt_gap": 0.0
+    },
+    {
+      "image_id": "train/patient00004/study1/view1_frontal.jpg",
+      "path": "CheXpert-v1.0-small/train/patient00004/study1/view1_frontal.jpg",
+      "absolute_path": "/home/ashish/projects/mbzai/data/raw/train/patient00004/study1/view1_frontal.jpg",
+      "split": "train",
+      "ground_truth": "No Finding",
+      "scores": {
+        "Atelectasis": 0.14285714285714285,
+        "Cardiomegaly": 0.14285714285714285,
+        "Effusion": 0.14285714285714285,
+        "Pneumonia": 0.14285714285714285,
+        "Edema": 0.14285714285714285,
+        "Consolidation": 0.14285714285714285,
+        "No Finding": 0.14285714285714285
+      },
+      "top_k": [
+        {
+          "label": "Atelectasis",
+          "score": 0.14285714285714285
+        },
+        {
+          "label": "Cardiomegaly",
+          "score": 0.14285714285714285
+        },
+        {
+          "label": "Effusion",
+          "score": 0.14285714285714285
+        },
+        {
+          "label": "Pneumonia",
+          "score": 0.14285714285714285
+        },
+        {
+          "label": "Edema",
+          "score": 0.14285714285714285
+        }
+      ],
+      "predicted": "Atelectasis",
+      "correct": false,
+      "rank_of_gt": 7,
+      "gt_in_top_k": false,
+      "gt_score": 0.14285714285714285,
+      "confidence_gap": 0.0,
+      "gt_gap": 0.0
+    }
+  ],
+  "failed_inference": [
+    {
+      "image_id": "train/patient00001/study1/view1_frontal.jpg",
+      "path": "CheXpert-v1.0-small/train/patient00001/study1/view1_frontal.jpg",
+      "absolute_path": "/home/ashish/projects/mbzai/data/raw/train/patient00001/study1/view1_frontal.jpg",
+      "split": "train",
+      "ground_truth": "No Finding",
+      "error": "No JSON object found in model response."
+    }
+  ]
+}

@@ -1,0 +1,60 @@
+# CLIP + VLM + label-graph adapter — training pipeline reference
+# Implementation: scripts/12_train_clip_vlm_gnn_adapter.py
+
+pipeline:
+  description: |
+    Alternative GNN adapter vs scripts/07_train_gnn_adapter.py:
+    - Baseline 07: node features = (VLM logit, VLM prob) only; small MLP + graph; residual on logits.
+    - This (12): node features = (projected CLIP image embedding, VLM logit_i, VLM prob_i);
+      K GNN layers (adj @ h + Linear + ReLU); residual delta on VLM logits.
+
+  inputs:
+    splits: data/processed/splits/{train,val,test}_rows.json
+    row_fields:
+      - path          # relative path joined with image_root
+      - x_logits      # frozen "vanilla VLM" multi-label logits (from your VLM JSONL → align pipeline)
+      - x_probs       # same, probabilities
+      - y_true, y_mask
+    images:
+      root: data/raw   # full path = image_root / row["path"]
+    graph:
+      edge_index_json: data/processed/graph/edge_index.json
+      edge_weight_json: data/processed/graph/edge_weight.json
+    clip:
+      model: openai/clip-vit-base-patch32   # HuggingFace; first run downloads weights
+      frozen: true                          # only adapter weights train
+
+  model_forward:
+    - CLIP vision encoder → z in R^clip_dim
+    - z projected to hidden_dim, broadcast to all C label nodes
+    - Per node i: h0_i = ReLU(Linear(concat(z, logit_i, prob_i)))
+    - For each GNN layer: H = ReLU(Linear( A @ H )) with A = normalized adjacency
+    - delta = Linear(H)  →  output_logits = vlm_logits + alpha * delta
+
+  loss:
+    type: masked_binary_cross_entropy_with_logits
+    class_weights: pos_weight from train split (same construction as 07)
+    mask: y_mask
+
+  outputs:
+    checkpoint: data/processed/experiments/clip_vlm_gnn_adapter/best_checkpoint.pt
+    format:
+      adapter_state_dict: state dict for ClipVlmGraphAdapter
+      adapter_hparams: clip_dim, num_labels, hidden_dim, gnn_layers, alpha
+    metrics: metrics.json
+    predictions: val_predictions.json, test_predictions.json
+
+  optional_cache:
+    flag: --clip_cache_pt
+    purpose: Save/load stacked CLIP embeddings + path order to skip re-encoding images.
+
+# Example CLI:
+#   python scripts/12_train_clip_vlm_gnn_adapter.py --gpu_id 0 \
+#     --clip_cache_pt data/processed/embeddings/clip_vitb32_cache.pt
+
+# Bipartite NativeGNN (attribute → object, no C×C adj):
+#   python scripts/13_train_bipartite_gnn_adapter.py --gpu_id 0 \
+#     --clip_cache_pt data/processed/embeddings/clip_vitb32_cache.pt
+
+# All three GNN variants in one go:
+#   bash scripts/run_all_gnn_variants.sh

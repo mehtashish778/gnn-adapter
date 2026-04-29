@@ -1,0 +1,16 @@
+graph:
+  source_train_rows: data/processed/splits/train_rows.json
+  output_dir: data/processed/graph
+
+  # Sparsification controls
+  top_k: 3
+  tau: 0.02
+  directed: true
+  symmetrize_if_undirected: false
+
+  # Optional safety checks for graph quality
+  require_min_out_degree: 1
+  fail_on_nan_weights: true
+
+  # Determinism
+  seed: 42
