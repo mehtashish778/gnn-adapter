@@ -3,25 +3,25 @@
 **Repository:** MBZAI multi-label CXR pipeline
 **Codebase:** `scripts/01–13`, `configs/`, `gradio_inference.py`
 **Dataset:** CheXpert-v1.0-small (Frontal + Lateral)
-**Label space:** `{Atelectasis, Cardiomegaly, Effusion, Pneumonia, Edema, Consolidation, No Finding}` (\(C=7\))
+**Label space:** `{Atelectasis, Cardiomegaly, Effusion, Pneumonia, Edema, Consolidation, No Finding}` ($C=7$)
 
-**Positioning.** The central proposal is **domain adaptation for multi-label classification without fine-tuning the VLM**: keep the foundation model frozen (one-time inference or API scores), and learn a **small graph-based adapter** that maps VLM outputs—and optionally a second frozen image encoder—into calibrated logits for the target domain (here, CheXpert-style labels and masking). That trades **full VLM fine-tuning** (GPU memory, catastrophic forgetting, data-hungry updates) for **adapter training** on cheap tabular tensors \((x_{\text{logits}}, x_{\text{probs}}, y_{\text{true}}, y_{\text{mask}})\) plus optional CLIP embeddings.
+**Positioning.** The central proposal is **domain adaptation for multi-label classification without fine-tuning the VLM**: keep the foundation model frozen (one-time inference or API scores), and learn a **small graph-based adapter** that maps VLM outputs—and optionally a second frozen image encoder—into calibrated logits for the target domain (here, CheXpert-style labels and masking). That trades **full VLM fine-tuning** (GPU memory, catastrophic forgetting, data-hungry updates) for **adapter training** on cheap tabular tensors $(x_{\text{logits}}, x_{\text{probs}}, y_{\text{true}}, y_{\text{mask}})$ plus optional CLIP embeddings.
 
 ---
 
 ## Abstract
 
-We **propose graph neural network (GNN) adapters as a practical alternative to end-to-end VLM fine-tuning** for multi-label chest X-ray classification: the VLM stays frozen while a lightweight head performs **domain-specific calibration and structured reasoning** over labels. Concretely, we re-calibrate a frozen Qwen2-VL-2B-Instruct baseline on CheXpert and compare four adapters of increasing structure: (i) an MLP over VLM logit/probability vectors; (ii) a residual label-graph GNN on a *co-error* adjacency mined from training disagreements; (iii) a homogeneous CLIP-conditioned label-graph GNN; and (iv) a bipartite *attribute → object* GNN with frozen CLIP object features and VLM attribute nodes. All adapters use masked, class-weighted binary cross-entropy on patient-grouped splits and are evaluated under (a) fixed \(t=0.5\) and (b) a leakage-free 4-way *train/calib/val/test* protocol with per-class thresholds tuned **only** on `calib`. The bipartite CLIP variant (`gnn13_clip_bipartite`) reaches the best calibrated test macro-F1 of **0.6889**, **+3.42** over the calibrated MLP (**0.6547**) and **+24.6** over the leakage-free calibrated frozen-VLM reference (**0.4427**). We also show how threshold tuning on the same split as evaluation can inflate a residual GNN by **~+0.61** macro-F1—a methodological artifact, not model capacity—and document how to avoid it.
+We **propose graph neural network (GNN) adapters as a practical alternative to end-to-end VLM fine-tuning** for multi-label chest X-ray classification: the VLM stays frozen while a lightweight head performs **domain-specific calibration and structured reasoning** over labels. Concretely, we re-calibrate a frozen Qwen2-VL-2B-Instruct baseline on CheXpert and compare four adapters of increasing structure: (i) an MLP over VLM logit/probability vectors; (ii) a residual label-graph GNN on a *co-error* adjacency mined from training disagreements; (iii) a homogeneous CLIP-conditioned label-graph GNN; and (iv) a bipartite *attribute → object* GNN with frozen CLIP object features and VLM attribute nodes. All adapters use masked, class-weighted binary cross-entropy on patient-grouped splits and are evaluated under (a) fixed $t=0.5$ and (b) a leakage-free 4-way *train/calib/val/test* protocol with per-class thresholds tuned **only** on `calib`. The bipartite CLIP variant (`gnn13_clip_bipartite`) reaches the best calibrated test macro-F1 of **0.6889**, **+3.42** over the calibrated MLP (**0.6547**) and **+24.6** over the leakage-free calibrated frozen-VLM reference (**0.4427**). We also show how threshold tuning on the same split as evaluation can inflate a residual GNN by **~+0.61** macro-F1—a methodological artifact, not model capacity—and document how to avoid it.
 
 ---
 
 ## 1. Introduction
 
-**Thesis.** Fine-tuning a large VLM for every new hospital, label set, or policy change is often **prohibitively expensive**: it requires gradient updates through billions of parameters, careful replay or regularization to limit forgetting, and substantial curated data. A complementary strategy is **post-hoc domain adaptation at the decision layer**: treat the VLM as a fixed feature generator \(f_{\text{VLM}}(x)\mapsto (z,p)\in\mathbb{R}^{2C}\) (and optionally a second frozen encoder \(e_{\text{CLIP}}(I)\)), then learn a small module \(g_\theta\) with \(\lvert\theta\rvert \ll \lvert\text{VLM}\rvert\) so that \(\hat z = g_\theta(z,p,e)\) matches the target domain’s labels and masking. **GNN-based \(g_\theta\)** is attractive because multi-label CXR findings are **not independent**: co-occurrence, mutual exclusion, and systematic error patterns are naturally expressed as **message passing on a label graph** or as **attribute→image bipartite** structure—inductive biases that a flat MLP must rediscover from data alone.
+**Thesis.** Fine-tuning a large VLM for every new hospital, label set, or policy change is often **prohibitively expensive**: it requires gradient updates through billions of parameters, careful replay or regularization to limit forgetting, and substantial curated data. A complementary strategy is **post-hoc domain adaptation at the decision layer**: treat the VLM as a fixed feature generator $f_{\text{VLM}}(x)\mapsto (z,p)\in\mathbb{R}^{2C}$ (and optionally a second frozen encoder $e_{\text{CLIP}}(I)$), then learn a small module $g_\theta$ with $\lvert\theta\rvert \ll \lvert\text{VLM}\rvert$ so that $\hat z = g_\theta(z,p,e)$ matches the target domain’s labels and masking. **GNN-based $g_\theta$** is attractive because multi-label CXR findings are **not independent**: co-occurrence, mutual exclusion, and systematic error patterns are naturally expressed as **message passing on a label graph** or as **attribute→image bipartite** structure—inductive biases that a flat MLP must rediscover from data alone.
 
 Multi-label classification of chest X-rays under the CheXpert label policy still presents three coupled difficulties even under this adapter framing: (1) extreme **class imbalance**, (2) **uncertain (-1) labels** that must be policy-mapped, and (3) **miscalibrated** zero-shot VLM probabilities (often dominated by `No Finding` at naive thresholds). We keep the VLM frozen and ask three empirical questions that stress-test the **GNN-as-domain-adapter** idea:
 
-1. **Is structure useful?** Does encoding label co-occurrence/co-error as a graph help over a flat MLP that already sees the full \([\,x_{\text{logit}};\,x_{\text{prob}}\,]\) vector?
+1. **Is structure useful?** Does encoding label co-occurrence/co-error as a graph help over a flat MLP that already sees the full $[\,x_{\text{logit}};\,x_{\text{prob}}\,]$ vector?
 2. **Is the image useful again?** Once we already have VLM scores, is there marginal value in re-injecting a *different* frozen image encoder (CLIP)?
 3. **Is the wiring useful?** Does the bipartite *attribute → object* topology provide a better inductive bias than a homogeneous label graph?
 
@@ -29,11 +29,11 @@ To answer these in a way that is **not contaminated by threshold-tuning leakage*
 
 ### 1.1 What “domain adaptation without finetuning” buys you
 
-| Aspect | Full VLM fine-tuning | GNN (or MLP) adapter on frozen \((z,p)\) |
+| Aspect | Full VLM fine-tuning | GNN (or MLP) adapter on frozen $(z,p)$ |
 |---|---|---|
-| Trainable parameters | \(10^9\)–\(10^{10}\) | \(10^4\)–\(10^6\) in this repo |
+| Trainable parameters | $10^9$–$10^{10}$ | $10^4$–$10^6$ in this repo |
 | GPU memory at train | Very high (vision + LM) | Low (small tensors + optional CLIP cache) |
-| Forgetting / drift | Risk when updating foundation | None on the VLM; only \(\theta\) changes |
+| Forgetting / drift | Risk when updating foundation | None on the VLM; only $\theta$ changes |
 | New label policy or site | Often re-finetune | Re-align JSONL + retrain adapter + retune thresholds |
 | Domain knowledge | Implicit in gradients | Explicit in graph topology (co-error, bipartite) |
 
@@ -54,11 +54,11 @@ The **GNN variants** add one more lever: **structured transfer**—sharing stati
 
 **CheXpert and uncertain labels.** CheXpert (Irvin et al., 2019) introduced the U-Ones / U-Zeros / U-Ignore policies for the `-1` (uncertain) label. We use **U-Zeros** with explicit masking: empty entries set both `y` and `mask` to 0, so excluded samples contribute nothing to the loss or to per-class F1.
 
-**Frozen-foundation adapters.** A growing body of work freezes a large pretrained encoder and trains a small adapter for downstream tasks (LoRA, prefix tuning, linear probes). For multi-label classification specifically, Chen et al. (2019, ML-GCN) proposed using a label-correlation graph to refine class-wise predictions. Our `gnn07` variant is a streamlined residual realization of this idea: nodes are labels, features are per-row \((\text{logit}_i, \text{prob}_i)\), and a single message-passing step adds a residual on top of the VLM logits.
+**Frozen-foundation adapters.** A growing body of work freezes a large pretrained encoder and trains a small adapter for downstream tasks (LoRA, prefix tuning, linear probes). For multi-label classification specifically, Chen et al. (2019, ML-GCN) proposed using a label-correlation graph to refine class-wise predictions. Our `gnn07` variant is a streamlined residual realization of this idea: nodes are labels, features are per-row $(\text{logit}_i, \text{prob}_i)$, and a single message-passing step adds a residual on top of the VLM logits.
 
 **CLIP for medical imaging.** CLIP (Radford et al., 2021) is not a chest-X-ray-specialised encoder, but its image embeddings are a cheap, complementary signal to those of any other VLM. We use a frozen `openai/clip-vit-base-patch32` image branch and project it into the GNN node space (`gnn12`) or into a dedicated *object* node (`gnn13`).
 
-**Bipartite attribute graphs.** Encoding *instances* and *targets* as different node roles is classic in heterogeneous and relational graph networks: message passing can traverse **bipartite incidence structure** rather than enforcing a homogeneous \(C\!\times\!C\) label graph everywhere. Foundations include **relational GCN** for typed edges between entity kinds (Schlichtkrull et al., 2018), **semantic-level meta-path attentive aggregation** across multiple node roles (Wang et al., 2019, HAN), and the modular **Neural Message Passing** view in which pairwise updates generalize heterogeneous interaction patterns (Gilmer et al., 2017). Our bipartite instantiation places **one CLIP-derived object node per image** and **\(C\) VLM-attribute nodes**, with weighted-mean attribute→object pooling before readout—a lightweight inductive bias aligned with CXR semantics without depending on PyG (`scripts/gnn_bipartite.py`).
+**Bipartite attribute graphs.** Encoding *instances* and *targets* as different node roles is classic in heterogeneous and relational graph networks: message passing can traverse **bipartite incidence structure** rather than enforcing a homogeneous $C\!\times\!C$ label graph everywhere. Foundations include **relational GCN** for typed edges between entity kinds (Schlichtkrull et al., 2018), **semantic-level meta-path attentive aggregation** across multiple node roles (Wang et al., 2019, HAN), and the modular **Neural Message Passing** view in which pairwise updates generalize heterogeneous interaction patterns (Gilmer et al., 2017). Our bipartite instantiation places **one CLIP-derived object node per image** and **$C$ VLM-attribute nodes**, with weighted-mean attribute→object pooling before readout—a lightweight inductive bias aligned with CXR semantics without depending on PyG (`scripts/gnn_bipartite.py`).
 
 **Threshold calibration.** Per-label operating points tie directly to probabilistic calibration and **proper scoring** viewpoints (Niculescu-Mizil & Caruana, 2005; Guo et al., 2017). Selecting thresholds by grid search remains common in multi-label setups (Lipton et al., 2014 optimise F-measure via threshold choices). Critically: **fitting thresholds—or any discrete decision rule—on the same split later used as a “selection” metric** induces optimistic bias (Varma & Simon, 2006; Cawley & Talbot, 2010). Our **`calib`** split mirrors the textbook fix used in unbiased model comparison: isolate post-hoc threshold fitting on disjoint data, unchanged when applied to validation and held-out test. §6 quantities how badly that discipline matters when logits are saturated.
 
@@ -113,10 +113,10 @@ Multi-label intermediates produced by these scripts (`splits_multilabel/`) carry
 ### 3.5 Co-error label graph (`scripts/04_build_coerror_graph.py`)
 
 For every training row with at least one positive label, we form
-\[
+$$
 \text{present}(r)=\{i:y_i=1\wedge m_i=1\},\qquad
 \text{absent}(r)=\{j:y_j=0\wedge m_j=1\},
-\]
+$$
 and accumulate
 
 ```text
@@ -132,91 +132,93 @@ i.e. an edge `i → j` is added whenever the VLM **missed** a true positive `i` 
 
 ### 4.1 Problem and notation
 
-For a single image with VLM outputs \(z=\text{logits}\in\mathbb{R}^C\), \(p=\sigma(z)\in[0,1]^C\), label vector \(y\in\{0,1\}^C\) and mask \(m\in\{0,1\}^C\), each adapter outputs **calibrated logits** \(\hat z\in\mathbb{R}^C\) and is trained with masked, class-weighted BCE:
+For a single image with VLM outputs $z=\text{logits}\in\mathbb{R}^C$, $p=\sigma(z)\in[0,1]^C$, label vector $y\in\{0,1\}^C$ and mask $m\in\{0,1\}^C$, each adapter outputs **calibrated logits** $\hat z\in\mathbb{R}^C$ and is trained with masked, class-weighted BCE:
 
-\[
+$$
 \mathcal{L}(\hat z, y, m)=\frac{\sum_{i=1}^{C} m_i \cdot \mathrm{BCEWithLogits}(\hat z_i, y_i;\,w^+_i)}{\sum_{i=1}^{C} m_i + \varepsilon},
 \qquad
 w^+_i=\min\!\Bigl(\tfrac{N^-_i}{\max(N^+_i,1)},\,100\Bigr).
-\]
+$$
 
-\(N^+_i, N^-_i\) are training positive/negative counts on the (masked) train split; \(w^+\) is the `pos_weight` used by `binary_cross_entropy_with_logits`.
+$N^+_i, N^-_i$ are training positive/negative counts on the (masked) train split; $w^+$ is the `pos_weight` used by `binary_cross_entropy_with_logits`.
 
 ### 4.2 M0 — `vlm_zeroshot` (`VLMZeroShot`)
 
-\[\hat z=z,\quad \hat p=\sigma(z)\]
+$$
+\hat z=z,\quad \hat p=\sigma(z)
+$$
 
-No learnable parameters. Decision rule: \(\hat y_i=\mathbf{1}[\hat p_i \ge 0.5]\). Implemented in `scripts/05_run_baseline_frozen_vlm.py`.
+No learnable parameters. Decision rule: $\hat y_i=\mathbf{1}[\hat p_i \ge 0.5]$. Implemented in `scripts/05_run_baseline_frozen_vlm.py`.
 
 ### 4.3 M1 — `vlm_mlp` (`VLMFeatureMLP`)
 
 A flat 2-layer MLP over the concatenated logit/prob vector:
 
-\[
+$$
 x=\bigl[\,z_1,p_1,z_2,p_2,\dots,z_C,p_C\,\bigr]\in\mathbb{R}^{2C},
 \qquad
 \hat z=W_2\,\mathrm{Dropout}(\mathrm{ReLU}(W_1 x)),
-\]
+$$
 
-with \(W_1\in\mathbb{R}^{64\times 2C}\), \(W_2\in\mathbb{R}^{C\times 64}\), AdamW, `lr=1e-3`, `weight_decay=1e-4`, 20 epochs, dropout 0.1. Implemented in `scripts/06_run_baseline_mlp.py`. This is the simplest baseline that can learn class-specific *bias correction* and per-label *temperature*.
+with $W_1\in\mathbb{R}^{64\times 2C}$, $W_2\in\mathbb{R}^{C\times 64}$, AdamW, `lr=1e-3`, `weight_decay=1e-4`, 20 epochs, dropout 0.1. Implemented in `scripts/06_run_baseline_mlp.py`. This is the simplest baseline that can learn class-specific *bias correction* and per-label *temperature*.
 
 ### 4.4 M2 — `gnn07_label_residual` (`LabelGraphResidualGNN`)
 
-\(C\)-node homogeneous graph with row-normalized adjacency \(A\in\mathbb{R}^{C\times C}\) (built in `build_adj` by adding self-loops then row-stochastic normalization). Per-row node features are 2-d: \(h^{(0)}_i=[z_i,\,p_i]\). The model is a tiny per-node MLP followed by a single message-pass and a residual on the original logits:
+$C$-node homogeneous graph with row-normalized adjacency $A\in\mathbb{R}^{C\times C}$ (built in `build_adj` by adding self-loops then row-stochastic normalization). Per-row node features are 2-d: $h^{(0)}_i=[z_i,\,p_i]$. The model is a tiny per-node MLP followed by a single message-pass and a residual on the original logits:
 
-\[
+$$
 g_i=W_2\,\mathrm{ReLU}(W_1 h^{(0)}_i)\in\mathbb{R},
 \quad
 \Delta = g\,A^\top\in\mathbb{R}^{C},
 \quad
 \hat z=z+\alpha\,\Delta.
-\]
+$$
 
 `hidden_dim=32`, `alpha=0.5`, `lr=3e-4`, AdamW with cosine LR + 2-epoch warmup, gradient clip 1.0, 80 epochs max with `early_stop_patience=18` on `val_bce`. Implemented in `scripts/07_train_gnn_adapter.py`.
 
 ### 4.5 M3 — `gnn12_clip_vlm_homo` (`ClipVlmHomogeneousGNN`)
 
-Same homogeneous label graph as M2, but each node now also sees a projected CLIP image embedding. With \(e\in\mathbb{R}^{D_{\text{clip}}}\) the frozen CLIP image embedding (`openai/clip-vit-base-patch32`):
+Same homogeneous label graph as M2, but each node now also sees a projected CLIP image embedding. With $e\in\mathbb{R}^{D_{\text{clip}}}$ the frozen CLIP image embedding (`openai/clip-vit-base-patch32`):
 
-\[
+$$
 \tilde z=\mathrm{ReLU}(W_e e)\in\mathbb{R}^{H},\qquad
 h^{(0)}_i=\mathrm{ReLU}\!\bigl(W_n[\tilde z;\,z_i;\,p_i]\bigr),
-\]
+$$
 
-then \(K\) GNN layers with normalized adjacency:
+then $K$ GNN layers with normalized adjacency:
 
-\[
+$$
 h^{(k+1)}_i=\mathrm{ReLU}\!\bigl(W^{(k)}\sum_j A_{ij}\,h^{(k)}_j\bigr),
 \qquad
 \Delta_i=W_h h^{(K)}_i\in\mathbb{R},
 \qquad
 \hat z=z+\alpha\,\Delta.
-\]
+$$
 
 `hidden_dim=64`, `gnn_layers=2`, `alpha=0.5`, `lr=3e-4`, AdamW + cosine, batch 32, 60 epochs, early-stop 16. Implemented in `scripts/12_train_clip_vlm_gnn_adapter.py`. CLIP embeddings are precomputed once per split and cached as a single `.pt` (`--clip_cache_pt`).
 
 ### 4.6 M4 — `gnn13_clip_bipartite` (`ClipBipartiteAttributeGNN`)
 
-A **bipartite** graph with \(C\) attribute nodes (one per label) and one object node (the image). Attribute features are still \([z_i, p_i]\); the object feature is a linear projection of CLIP: \(o^{(0)}=W_{\text{clip}} e\). Each bipartite layer aggregates a weighted-mean message from attributes to the object, projects, concatenates with the object state, then updates with a small MLP + dropout (`scripts/gnn_bipartite.py::BipartiteMessagePassingLayer`):
+A **bipartite** graph with $C$ attribute nodes (one per label) and one object node (the image). Attribute features are still $[z_i, p_i]$; the object feature is a linear projection of CLIP: $o^{(0)}=W_{\text{clip}} e$. Each bipartite layer aggregates a weighted-mean message from attributes to the object, projects, concatenates with the object state, then updates with a small MLP + dropout (`scripts/gnn_bipartite.py::BipartiteMessagePassingLayer`):
 
-\[
+$$
 \mu=\frac{\sum_i w_i\,W_{\text{am}}\, a_i}{\sum_i w_i+\varepsilon},
 \quad
 \nu=W_{\text{ap}}\,\mu,
 \quad
 o^{(k+1)}=\mathrm{Dropout}\!\bigl(\mathrm{ReLU}\!\bigl(W_u[o^{(k)};\,\nu]\bigr)\bigr).
-\]
+$$
 
-After \(L\) layers (`hidden_dims=[512,256]`), a single classifier head produces \(C\) logits from the object state, and a residual term re-anchors them to the VLM:
+After $L$ layers (`hidden_dims=[512,256]`), a single classifier head produces $C$ logits from the object state, and a residual term re-anchors them to the VLM:
 
-\[
+$$
 \hat z=W_{\text{cls}}\,o^{(L)} + \alpha\,z,\qquad \alpha=0.5.
-\]
+$$
 
-The edge weights \(w_i\) come from `build_bipartite_edge_weights(p, mode, τ)`:
+The edge weights $w_i$ come from `build_bipartite_edge_weights(p, mode, τ)`:
 
-- `mode=all`: \(w_i=1\) (uniform mean).
-- `mode=vlm_positive`: \(w_i=\mathbf{1}[p_i\ge τ]\), with all-ones fallback if a row has no edges.
+- `mode=all`: $w_i=1$ (uniform mean).
+- `mode=vlm_positive`: $w_i=\mathbf{1}[p_i\ge τ]$, with all-ones fallback if a row has no edges.
 
 `object_feature_dim=512`, dropout 0.2, `lr=3e-4`, AdamW + cosine, batch 32, 60 epochs, early-stop 16. Implemented in `scripts/13_train_bipartite_gnn_adapter.py`.
 
@@ -225,8 +227,8 @@ The edge weights \(w_i\) come from `build_bipartite_edge_weights(p, mode, τ)`:
 | Adapter | Sees image again? | Uses label graph? | Uses CLIP? | Topology |
 |---|---|---|---|---|
 | `vlm_mlp` | no | no | no | dense flat |
-| `gnn07_label_residual` | no | yes (\(A_{C\times C}\)) | no | homogeneous |
-| `gnn12_clip_vlm_homo` | yes | yes (\(A_{C\times C}\)) | yes | homogeneous, image-broadcast |
+| `gnn07_label_residual` | no | yes ($A_{C\times C}$) | no | homogeneous |
+| `gnn12_clip_vlm_homo` | yes | yes ($A_{C\times C}$) | yes | homogeneous, image-broadcast |
 | `gnn13_clip_bipartite` | yes | implicit via attr→obj | yes | bipartite |
 
 Each row adds **exactly one** capability over the previous one, which lets §6 attribute the lift to a single change at a time.
@@ -257,7 +259,7 @@ We always report **masked macro-F1** (per-class F1 on rows where `mask=1`, then 
 
 Two thresholding modes are reported side-by-side:
 
-- **`@0.5`**: \(\hat y_i=\mathbf{1}[\hat p_i\ge 0.5]\) for every class.
+- **`@0.5`**: $\hat y_i=\mathbf{1}[\hat p_i\ge 0.5]$ for every class.
 - **`@per_class_thr`**: per-class thresholds picked by `scripts/08_tune_thresholds.py` via a grid sweep `t∈{0.05, 0.10, …, 0.95}` that maximises class F1 on a *calibration* prediction set.
 
 The leakage-free `calibrated4way` protocol is the recommended one and is the protocol used to declare the *best* model in this report. It enforces:
@@ -321,9 +323,9 @@ All numbers below are macro-F1, rounded to 4 decimals; raw 6-decimal values are 
 
 Look at `gnn07_label_residual`: at the fixed threshold `0.5` it scores **0.04** macro-F1. After per-class thresholds tuned on the *same* validation split it appears to score **0.66**, a **+0.61 F1** apparent jump. The root cause is mechanical, not statistical:
 
-1. The residual adapter learns a near-zero-mean correction \(\Delta\) on top of frozen VLM logits whose distribution is roughly \(\mathcal{N}(\mu\!\ll\!0, \sigma)\) for non-`No Finding` classes (Qwen2-VL’s soft *negative* bias).
-2. Sigmoid of those logits hugs ≈0.05–0.20 for true positives. At \(t=0.5\) virtually no class fires → recall ≈0 → F1 ≈0.
-3. Threshold sweep \(t\in\{0.05,\dots,0.95\}\) recovers each class’s F1 by simply picking a low threshold; tuning *and* reporting on the same split optimistically samples the F1-maximising operating point.
+1. The residual adapter learns a near-zero-mean correction $\Delta$ on top of frozen VLM logits whose distribution is roughly $\mathcal{N}(\mu\!\ll\!0, \sigma)$ for non-`No Finding` classes (Qwen2-VL’s soft *negative* bias).
+2. Sigmoid of those logits hugs ≈0.05–0.20 for true positives. At $t=0.5$ virtually no class fires → recall ≈0 → F1 ≈0.
+3. Threshold sweep $t\in\{0.05,\dots,0.95\}$ recovers each class’s F1 by simply picking a low threshold; tuning *and* reporting on the same split optimistically samples the F1-maximising operating point.
 
 Compare this to the leakage-free 4-way protocol on the same model: **0.6512** on `test`. That is the *real* gain of the residual adapter, and it is **statistically indistinguishable** from the MLP baseline. The lesson is not “GNN07 is bad”, but “any sufficiently flexible threshold optimization on a poorly calibrated model can simulate model improvement.” Always tune on a held-out `calib` split.
 
@@ -333,7 +335,7 @@ Holding the homogeneous label graph fixed and adding a frozen CLIP branch lifts 
 
 ### 6.4 Effect of bipartite topology (M3 → M4)
 
-Replacing the \(C\times C\) label adjacency with a **bipartite attribute → object** flow further lifts test F1 from **0.6777 → 0.6889** (**+1.12 F1**). The structural argument: a chest X-ray has *one* object (the image) that emits *many* findings, so an attribute-to-object bottleneck is a closer match to the data-generating process than an arbitrary co-error label graph. The classifier head reads out from the object state, which has been updated by all attribute messages — the adjacency is no longer fixed and per-row weighting (`vlm_positive` mode) lets each sample emphasise its own VLM-positive findings.
+Replacing the $C\times C$ label adjacency with a **bipartite attribute → object** flow further lifts test F1 from **0.6777 → 0.6889** (**+1.12 F1**). The structural argument: a chest X-ray has *one* object (the image) that emits *many* findings, so an attribute-to-object bottleneck is a closer match to the data-generating process than an arbitrary co-error label graph. The classifier head reads out from the object state, which has been updated by all attribute messages — the adjacency is no longer fixed and per-row weighting (`vlm_positive` mode) lets each sample emphasise its own VLM-positive findings.
 
 ### 6.5 Per-protocol observations
 
@@ -351,7 +353,7 @@ Replacing the \(C\times C\) label adjacency with a **bipartite attribute → obj
 
 ### 7.2 Number of bipartite layers
 
-`--gnn_hidden_dims 512,256` (i.e., \(L=2\)) is the default. The first layer encodes high-frequency attribute → object updates, the second consolidates them. Going deeper (e.g., `512,256,128`) does not help because the bipartite graph has diameter 2 and additional layers only re-mix the same object state.
+`--gnn_hidden_dims 512,256` (i.e., $L=2$) is the default. The first layer encodes high-frequency attribute → object updates, the second consolidates them. Going deeper (e.g., `512,256,128`) does not help because the bipartite graph has diameter 2 and additional layers only re-mix the same object state.
 
 ### 7.3 Co-error graph `top_k` and `τ`
 
@@ -429,7 +431,7 @@ For a production system that must keep the foundation VLM frozen, **`gnn13_clip_
 
 ## 11. Conclusion
 
-We argue that **GNN-based adapters are a practical recipe for domain adaptation in multi-label CXR classification without fine-tuning the VLM**: the foundation model supplies fixed \((z,p)\) scores (and optionally a second frozen encoder supplies image context), while a tiny trainable head performs **structured, label-aware recalibration** on the target domain. We instantiated this with a small, reproducible family on CheXpert: a bipartite CLIP-conditioned attribute → object GNN reaches **0.6889** macro-F1 on a leakage-free 4-way test split—**+24.6** over the calibrated frozen-VLM reference and **+3.4** over a strong MLP that already sees the full logit/prob vector. We also showed how **~+0.61** macro-F1 can be an artifact of threshold leakage, and how a dedicated `calib` split removes it. Together, these results support the design pattern **“freeze VLM, adapt with graphs (and calibration)”** when full fine-tuning is too costly or too risky to maintain.
+We argue that **GNN-based adapters are a practical recipe for domain adaptation in multi-label CXR classification without fine-tuning the VLM**: the foundation model supplies fixed $(z,p)$ scores (and optionally a second frozen encoder supplies image context), while a tiny trainable head performs **structured, label-aware recalibration** on the target domain. We instantiated this with a small, reproducible family on CheXpert: a bipartite CLIP-conditioned attribute → object GNN reaches **0.6889** macro-F1 on a leakage-free 4-way test split—**+24.6** over the calibrated frozen-VLM reference and **+3.4** over a strong MLP that already sees the full logit/prob vector. We also showed how **~+0.61** macro-F1 can be an artifact of threshold leakage, and how a dedicated `calib` split removes it. Together, these results support the design pattern **“freeze VLM, adapt with graphs (and calibration)”** when full fine-tuning is too costly or too risky to maintain.
 
 ---
 
