@@ -289,8 +289,16 @@ def main():
     parser.add_argument("--protocol", default="")
     parser.add_argument("--run_id", default="")
     parser.add_argument("--resume_from", default="", help="Optional checkpoint path to initialize adapter weights.")
+    parser.add_argument(
+        "--eval_only",
+        action="store_true",
+        help="Load --resume_from (required), skip training, write predictions/metrics only.",
+    )
     parser.add_argument("--gpu_id", type=int, default=0)
     args = parser.parse_args()
+
+    if args.eval_only and not args.resume_from:
+        raise RuntimeError("--eval_only requires --resume_from <checkpoint.pt>")
 
     if not torch.cuda.is_available():
         raise RuntimeError("CUDA is required for this script (CLIP + training).")
@@ -440,13 +448,6 @@ def main():
         state = ckpt.get("adapter_state_dict", ckpt)
         adapter.load_state_dict(state)
 
-    opt = torch.optim.AdamW(adapter.parameters(), lr=args.lr, weight_decay=args.weight_decay)
-    plateau_sched = None
-    if args.lr_scheduler == "plateau":
-        plateau_sched = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            opt, mode="min", factor=args.plateau_factor, patience=args.plateau_patience, min_lr=args.min_lr
-        )
-
     pos = (tr_y * tr_m).sum(dim=0)
     neg = ((1 - tr_y) * tr_m).sum(dim=0).clamp(min=1)
     pos_weight = (neg / pos.clamp(min=1)).clamp(max=args.pos_weight_max).to(device)
@@ -466,14 +467,6 @@ def main():
         ca_y_d = None
         ca_m_d = None
 
-    train_loader = DataLoader(
-        RowTensorDataset(tr_e, tr_logits, tr_probs, tr_y, tr_m),
-        batch_size=args.batch_size,
-        shuffle=True,
-        num_workers=args.num_workers,
-        pin_memory=True,
-    )
-
     base_lr = args.lr
 
     def lr_at_epoch(epoch: int) -> float:
@@ -487,7 +480,6 @@ def main():
 
     best: Dict[str, Any] = {"score": None, "state_dict": None}
     history: List[dict] = []
-    epochs_no_improve = 0
 
     def is_better(metric_name, val_bce, f1_05, f1_thr):
         if metric_name == "val_bce":
@@ -505,32 +497,7 @@ def main():
             return True
         return cur > best["score"]
 
-    for epoch in range(1, args.epochs + 1):
-        if args.lr_scheduler == "cosine":
-            lr_now = lr_at_epoch(epoch)
-            for pg in opt.param_groups:
-                pg["lr"] = lr_now
-
-        adapter.train()
-        epoch_losses = []
-        for ce, ll, pp, yt, ym in train_loader:
-            ce = ce.to(device, non_blocking=True)
-            ll = ll.to(device, non_blocking=True)
-            pp = pp.to(device, non_blocking=True)
-            yt = yt.to(device, non_blocking=True)
-            ym = ym.to(device, non_blocking=True)
-            opt.zero_grad()
-            out = adapter(ce, ll, pp, adj)
-            raw = F.binary_cross_entropy_with_logits(out, yt, pos_weight=pos_weight, reduction="none")
-            loss = (raw * ym).sum() / ym.sum().clamp(min=1.0)
-            loss.backward()
-            if args.grad_clip_norm and args.grad_clip_norm > 0:
-                nn.utils.clip_grad_norm_(adapter.parameters(), args.grad_clip_norm)
-            opt.step()
-            epoch_losses.append(float(loss.item()))
-
-        train_loss = sum(epoch_losses) / max(1, len(epoch_losses))
-
+    def val_forward_scores():
         val_out_parts = []
         adapter.eval()
         with torch.no_grad():
@@ -539,43 +506,93 @@ def main():
                 ce = va_e[start : start + args.batch_size].to(device, non_blocking=True)
                 ll = va_logits[start : start + args.batch_size].to(device, non_blocking=True)
                 pp = va_probs[start : start + args.batch_size].to(device, non_blocking=True)
-                out = adapter(ce, ll, pp, adj)
-                val_out_parts.append(out)
+                val_out_parts.append(adapter(ce, ll, pp, adj))
             val_out = torch.cat(val_out_parts, dim=0)
-            val_prob = torch.sigmoid(val_out)
-            val_bce = float(masked_bce_with_logits(val_out, va_y_d, va_m_d, pos_weight).item())
-            val_f1_05 = masked_macro_f1(val_prob, va_y_d, va_m_d, threshold=0.5)
-            val_f1_thr = (
-                masked_macro_f1(val_prob, va_y_d, va_m_d, threshold=thr_list) if thr_list is not None else val_f1_05
-            )
+            val_prob_e = torch.sigmoid(val_out)
+            vb = float(masked_bce_with_logits(val_out, va_y_d, va_m_d, pos_weight).item())
+            f05 = masked_macro_f1(val_prob_e, va_y_d, va_m_d, threshold=0.5)
+            fthr = masked_macro_f1(val_prob_e, va_y_d, va_m_d, threshold=thr_list) if thr_list is not None else f05
+        return vb, f05, fthr
 
-        row = {
-            "epoch": epoch,
-            "lr": float(opt.param_groups[0]["lr"]),
-            "train_loss": train_loss,
-            "val_bce": val_bce,
-            "val_macro_f1@0.5": val_f1_05,
-            "val_macro_f1@thr": val_f1_thr,
-        }
-        history.append(row)
-        if plateau_sched is not None:
-            plateau_sched.step(val_bce)
-
-        if is_better(best_metric, val_bce, val_f1_05, val_f1_thr):
-            if best_metric == "val_bce":
-                best["score"] = val_bce
-            elif best_metric == "val_macro_f1_05":
-                best["score"] = val_f1_05
-            else:
-                best["score"] = val_f1_thr
-            best["state_dict"] = {k: v.cpu() for k, v in adapter.state_dict().items()}
-            epochs_no_improve = 0
+    if args.eval_only:
+        val_bce, val_f1_05, val_f1_thr_e = val_forward_scores()
+        if best_metric == "val_bce":
+            best["score"] = val_bce
+        elif best_metric == "val_macro_f1_05":
+            best["score"] = val_f1_05
         else:
-            epochs_no_improve += 1
+            best["score"] = val_f1_thr_e
+        best["state_dict"] = {k: v.cpu() for k, v in adapter.state_dict().items()}
+    else:
+        opt = torch.optim.AdamW(adapter.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+        plateau_sched = None
+        if args.lr_scheduler == "plateau":
+            plateau_sched = torch.optim.lr_scheduler.ReduceLROnPlateau(
+                opt, mode="min", factor=args.plateau_factor, patience=args.plateau_patience, min_lr=args.min_lr
+            )
+        train_loader = DataLoader(
+            RowTensorDataset(tr_e, tr_logits, tr_probs, tr_y, tr_m),
+            batch_size=args.batch_size,
+            shuffle=True,
+            num_workers=args.num_workers,
+            pin_memory=True,
+        )
+        epochs_no_improve = 0
 
-        if args.early_stop_patience and epochs_no_improve >= args.early_stop_patience:
-            print({"early_stop": True, "epoch": epoch, "epochs_no_improve": epochs_no_improve})
-            break
+        for epoch in range(1, args.epochs + 1):
+            if args.lr_scheduler == "cosine":
+                lr_now = lr_at_epoch(epoch)
+                for pg in opt.param_groups:
+                    pg["lr"] = lr_now
+
+            adapter.train()
+            epoch_losses = []
+            for ce, ll, pp, yt, ym in train_loader:
+                ce = ce.to(device, non_blocking=True)
+                ll = ll.to(device, non_blocking=True)
+                pp = pp.to(device, non_blocking=True)
+                yt = yt.to(device, non_blocking=True)
+                ym = ym.to(device, non_blocking=True)
+                opt.zero_grad()
+                out = adapter(ce, ll, pp, adj)
+                raw = F.binary_cross_entropy_with_logits(out, yt, pos_weight=pos_weight, reduction="none")
+                loss = (raw * ym).sum() / ym.sum().clamp(min=1.0)
+                loss.backward()
+                if args.grad_clip_norm and args.grad_clip_norm > 0:
+                    nn.utils.clip_grad_norm_(adapter.parameters(), args.grad_clip_norm)
+                opt.step()
+                epoch_losses.append(float(loss.item()))
+
+            train_loss = sum(epoch_losses) / max(1, len(epoch_losses))
+            val_bce, val_f1_05, val_f1_thr = val_forward_scores()
+
+            row = {
+                "epoch": epoch,
+                "lr": float(opt.param_groups[0]["lr"]),
+                "train_loss": train_loss,
+                "val_bce": val_bce,
+                "val_macro_f1@0.5": val_f1_05,
+                "val_macro_f1@thr": val_f1_thr,
+            }
+            history.append(row)
+            if plateau_sched is not None:
+                plateau_sched.step(val_bce)
+
+            if is_better(best_metric, val_bce, val_f1_05, val_f1_thr):
+                if best_metric == "val_bce":
+                    best["score"] = val_bce
+                elif best_metric == "val_macro_f1_05":
+                    best["score"] = val_f1_05
+                else:
+                    best["score"] = val_f1_thr
+                best["state_dict"] = {k: v.cpu() for k, v in adapter.state_dict().items()}
+                epochs_no_improve = 0
+            else:
+                epochs_no_improve += 1
+
+            if args.early_stop_patience and epochs_no_improve >= args.early_stop_patience:
+                print({"early_stop": True, "epoch": epoch, "epochs_no_improve": epochs_no_improve})
+                break
 
     if best["state_dict"] is None:
         raise RuntimeError("No checkpoint saved.")
@@ -636,26 +653,30 @@ def main():
         default_legacy_out_dir="data/processed/experiments/clip_vlm_gnn_adapter",
     )
     out_dir.mkdir(parents=True, exist_ok=True)
-    torch.save(
-        {
-            "adapter_state_dict": best["state_dict"],
-            "adapter_hparams": {
-                "clip_dim": clip_dim,
-                "num_labels": c,
-                "hidden_dim": args.hidden_dim,
-                "gnn_layers": args.gnn_layers,
-                "alpha": args.alpha,
+    if not args.eval_only:
+        torch.save(
+            {
+                "adapter_state_dict": best["state_dict"],
+                "adapter_hparams": {
+                    "clip_dim": clip_dim,
+                    "num_labels": c,
+                    "hidden_dim": args.hidden_dim,
+                    "gnn_layers": args.gnn_layers,
+                    "alpha": args.alpha,
+                },
             },
-        },
-        out_dir / "best_checkpoint.pt",
-    )
+            out_dir / "best_checkpoint.pt",
+        )
+    hp = vars(args).copy()
+    hp["epochs_ran_export"] = len(history)
     metrics_payload = {
         "dataset_sizes": {"train": n_train, "val": n_val, "calib": n_calib, "test": n_test},
         "clip_model": args.clip_model,
         "best_metric": best_metric,
         "best_score": best["score"],
         "seed": args.seed,
-        "hparams": vars(args),
+        "eval_only": args.eval_only,
+        "hparams": hp,
         "val_macro_f1@0.5": val_f1,
         "test_macro_f1@0.5": test_f1,
         "val_macro_f1@per_class_thr": val_f1_thr_eval,

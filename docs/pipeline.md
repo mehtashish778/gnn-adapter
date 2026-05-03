@@ -1,5 +1,7 @@
 # Pipeline Documentation
 
+For the full methodological narrative and evaluation framing, see **`docs/academic_report.md`** (canonical academic reference).
+
 This document maps each script to its inputs/outputs so you can debug or rerun stages independently.
 
 ## Canonical model IDs

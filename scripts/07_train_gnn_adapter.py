@@ -151,8 +151,16 @@ def main():
     parser.add_argument("--protocol", default="")
     parser.add_argument("--run_id", default="")
     parser.add_argument("--resume_from", default="", help="Optional checkpoint path to initialize model weights.")
+    parser.add_argument(
+        "--eval_only",
+        action="store_true",
+        help="Load --resume_from (required), skip training, write predictions and metrics.",
+    )
     parser.add_argument("--gpu_id", type=int, default=1, help="Single GPU index to use.")
     args = parser.parse_args()
+
+    if args.eval_only and not args.resume_from:
+        raise RuntimeError("--eval_only requires --resume_from <checkpoint.pt>")
 
     try:
         import math
@@ -241,7 +249,6 @@ def main():
 
     best = {"score": None, "state_dict": None}
     history = []
-    epochs_no_improve = 0
     base_lr = args.lr
 
     def lr_at_epoch(epoch: int) -> float:
@@ -269,61 +276,84 @@ def main():
             return True
         return cur > best["score"]
 
-    for epoch in range(1, args.epochs + 1):
-        if args.lr_scheduler == "cosine":
-            lr_now = lr_at_epoch(epoch)
-            for pg in opt.param_groups:
-                pg["lr"] = lr_now
-
-        model.train()
-        out = model(tr_logits, tr_probs, adj)
-        raw_loss = F.binary_cross_entropy_with_logits(out, tr_y, pos_weight=pos_weight, reduction="none")
-        loss = (raw_loss * tr_m).sum() / tr_m.sum().clamp(min=1.0)
-        opt.zero_grad()
-        loss.backward()
-        if args.grad_clip_norm and args.grad_clip_norm > 0:
-            torch.nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip_norm)
-        opt.step()
-
+    if args.eval_only:
         model.eval()
         with torch.no_grad():
             val_out = model(va_logits, va_probs, adj)
             val_prob = torch.sigmoid(val_out)
             val_bce = float(masked_bce_with_logits(val_out, va_y, va_m, pos_weight).item())
             val_f1_05 = masked_macro_f1(val_prob, va_y, va_m, threshold=0.5)
-            val_f1_thr = (
-                masked_macro_f1(val_prob, va_y, va_m, threshold=thr_list) if thr_list is not None else val_f1_05
+            val_f1_thr_e = (
+                masked_macro_f1(val_prob, va_y, va_m, threshold=thr_list)
+                if thr_list is not None
+                else val_f1_05
             )
-
-        row = {
-            "epoch": epoch,
-            "lr": float(opt.param_groups[0]["lr"]),
-            "train_loss": float(loss.item()),
-            "val_bce": val_bce,
-            "val_macro_f1@0.5": val_f1_05,
-            "val_macro_f1@thr": val_f1_thr,
-        }
-        history.append(row)
-
-        if plateau_sched is not None:
-            plateau_sched.step(val_bce)
-
-        cur_f1 = val_f1_thr if best_metric == "val_macro_f1_thr" else val_f1_05
-        if is_better(best_metric, val_bce, val_f1_05, val_f1_thr):
-            if best_metric == "val_bce":
-                best["score"] = val_bce
-            elif best_metric == "val_macro_f1_05":
-                best["score"] = val_f1_05
-            else:
-                best["score"] = val_f1_thr
-            best["state_dict"] = {k: v.cpu() for k, v in model.state_dict().items()}
-            epochs_no_improve = 0
+        if best_metric == "val_bce":
+            best["score"] = val_bce
+        elif best_metric == "val_macro_f1_05":
+            best["score"] = val_f1_05
         else:
-            epochs_no_improve += 1
+            best["score"] = val_f1_thr_e
+        best["state_dict"] = {k: v.cpu() for k, v in model.state_dict().items()}
+    else:
+        epochs_no_improve = 0
+        for epoch in range(1, args.epochs + 1):
+            if args.lr_scheduler == "cosine":
+                lr_now = lr_at_epoch(epoch)
+                for pg in opt.param_groups:
+                    pg["lr"] = lr_now
 
-        if args.early_stop_patience and epochs_no_improve >= args.early_stop_patience:
-            print({"early_stop": True, "epoch": epoch, "epochs_no_improve": epochs_no_improve})
-            break
+            model.train()
+            out = model(tr_logits, tr_probs, adj)
+            raw_loss = F.binary_cross_entropy_with_logits(out, tr_y, pos_weight=pos_weight, reduction="none")
+            loss = (raw_loss * tr_m).sum() / tr_m.sum().clamp(min=1.0)
+            opt.zero_grad()
+            loss.backward()
+            if args.grad_clip_norm and args.grad_clip_norm > 0:
+                torch.nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip_norm)
+            opt.step()
+
+            model.eval()
+            with torch.no_grad():
+                val_out = model(va_logits, va_probs, adj)
+                val_prob = torch.sigmoid(val_out)
+                val_bce = float(masked_bce_with_logits(val_out, va_y, va_m, pos_weight).item())
+                val_f1_05 = masked_macro_f1(val_prob, va_y, va_m, threshold=0.5)
+                val_f1_thr = (
+                    masked_macro_f1(val_prob, va_y, va_m, threshold=thr_list)
+                    if thr_list is not None
+                    else val_f1_05
+                )
+
+            row = {
+                "epoch": epoch,
+                "lr": float(opt.param_groups[0]["lr"]),
+                "train_loss": float(loss.item()),
+                "val_bce": val_bce,
+                "val_macro_f1@0.5": val_f1_05,
+                "val_macro_f1@thr": val_f1_thr,
+            }
+            history.append(row)
+
+            if plateau_sched is not None:
+                plateau_sched.step(val_bce)
+
+            cur_f1 = val_f1_thr if best_metric == "val_macro_f1_thr" else val_f1_05
+            if is_better(best_metric, val_bce, val_f1_05, val_f1_thr):
+                if best_metric == "val_bce":
+                    best["score"] = val_bce
+                elif best_metric == "val_macro_f1_05":
+                    best["score"] = val_f1_05
+                else:
+                    best["score"] = val_f1_thr
+                best["state_dict"] = {k: v.cpu() for k, v in model.state_dict().items()}
+                epochs_no_improve = 0
+            else:
+                epochs_no_improve += 1
+
+            if args.early_stop_patience and epochs_no_improve >= args.early_stop_patience:
+                print({"early_stop": True, "epoch": epoch, "epochs_no_improve": epochs_no_improve})
+                break
 
     if best["state_dict"] is None:
         raise RuntimeError("No checkpoint was saved; training may have failed.")
@@ -369,14 +399,17 @@ def main():
         default_legacy_out_dir="data/processed/experiments/gnn_adapter",
     )
     out_dir.mkdir(parents=True, exist_ok=True)
-    torch.save(best["state_dict"], out_dir / "best_checkpoint.pt")
+    if not args.eval_only:
+        torch.save(best["state_dict"], out_dir / "best_checkpoint.pt")
     metrics_payload = {
         "dataset_sizes": {"train": n_train, "val": n_val, "calib": n_calib, "test": n_test},
         "best_metric": best_metric,
         "best_score": best["score"],
         "seed": args.seed,
+        "eval_only": args.eval_only,
         "hparams": {
             "epochs_ran": len(history),
+            "eval_only": args.eval_only,
             "lr": args.lr,
             "min_lr": args.min_lr,
             "hidden_dim": args.hidden_dim,

@@ -56,8 +56,16 @@ def main():
     parser.add_argument("--protocol", default="")
     parser.add_argument("--run_id", default="")
     parser.add_argument("--resume_from", default="", help="Optional checkpoint path to initialize model weights.")
+    parser.add_argument(
+        "--eval_only",
+        action="store_true",
+        help="Load --resume_from, skip training, write val/test/calib predictions and metrics only.",
+    )
     parser.add_argument("--gpu_id", type=int, default=0, help="Single GPU index to use.")
     args = parser.parse_args()
+
+    if args.eval_only and not args.resume_from:
+        raise RuntimeError("--eval_only requires --resume_from <checkpoint.pt>")
 
     try:
         import torch
@@ -104,28 +112,34 @@ def main():
         xca = xca.to(device)
         yca = yca.to(device)
         mca = mca.to(device)
-    opt = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-4)
-
     pos = (ytr * mtr).sum(dim=0)
     neg = ((1 - ytr) * mtr).sum(dim=0).clamp(min=1)
     pos_weight = (neg / pos.clamp(min=1)).clamp(max=100.0)
-    best = {"val_macro_f1": -1, "state": None}
 
-    for _ in range(args.epochs):
-        model.train()
-        out = model(xtr)
-        raw_loss = F.binary_cross_entropy_with_logits(out, ytr, pos_weight=pos_weight, reduction="none")
-        loss = (raw_loss * mtr).sum() / mtr.sum().clamp(min=1.0)
-        opt.zero_grad()
-        loss.backward()
-        opt.step()
+    best = {"val_macro_f1": -1.0, "state": None}
+    if args.eval_only:
         model.eval()
         with torch.no_grad():
-            val_f1 = macro_f1(torch.sigmoid(model(xva)), yva, mva)
-        if val_f1 > best["val_macro_f1"]:
-            best = {"val_macro_f1": val_f1, "state": {k: v.cpu() for k, v in model.state_dict().items()}}
+            pv = torch.sigmoid(model(xva))
+            vmf = macro_f1(pv, yva, mva)
+        best = {"val_macro_f1": vmf, "state": {k: v.cpu() for k, v in model.state_dict().items()}}
+    else:
+        opt = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-4)
+        for _ in range(args.epochs):
+            model.train()
+            out = model(xtr)
+            raw_loss = F.binary_cross_entropy_with_logits(out, ytr, pos_weight=pos_weight, reduction="none")
+            loss = (raw_loss * mtr).sum() / mtr.sum().clamp(min=1.0)
+            opt.zero_grad()
+            loss.backward()
+            opt.step()
+            model.eval()
+            with torch.no_grad():
+                val_f1 = macro_f1(torch.sigmoid(model(xva)), yva, mva)
+            if val_f1 > best["val_macro_f1"]:
+                best = {"val_macro_f1": val_f1, "state": {k: v.cpu() for k, v in model.state_dict().items()}}
 
-    model.load_state_dict(best["state"])
+        model.load_state_dict(best["state"])
     model.eval()
     with torch.no_grad():
         val_prob = torch.sigmoid(model(xva))
@@ -144,16 +158,18 @@ def main():
         out_dir / "val_predictions.json",
         {"probs": val_prob.tolist(), "y_true": yva.tolist(), "y_mask": mva.tolist()},
     )
-    write_json(
-        out_dir / "metrics.json",
-        {
-            "best_val_macro_f1": best["val_macro_f1"],
-            "val_subset_accuracy@0.5": val_subset,
-            "test_macro_f1@0.5": macro_f1(test_prob, yte, mte),
-            "test_subset_accuracy@0.5": test_subset,
-        },
-    )
-    torch.save(model.state_dict(), out_dir / "best_checkpoint.pt")
+    metrics_payload = {
+        "best_val_macro_f1": best["val_macro_f1"],
+        "eval_only": bool(args.eval_only),
+        "val_subset_accuracy@0.5": val_subset,
+        "test_macro_f1@0.5": macro_f1(test_prob, yte, mte),
+        "test_subset_accuracy@0.5": test_subset,
+    }
+    if args.eval_only and args.resume_from:
+        metrics_payload["checkpoint_loaded"] = str(Path(args.resume_from).resolve())
+    write_json(out_dir / "metrics.json", metrics_payload)
+    if not args.eval_only:
+        torch.save(model.state_dict(), out_dir / "best_checkpoint.pt")
     write_json(
         out_dir / "test_predictions.json",
         {"probs": test_prob.tolist(), "y_true": yte.tolist(), "y_mask": mte.tolist()},
@@ -176,7 +192,7 @@ def main():
                 "val_subset_accuracy@0.5": val_subset,
                 "test_subset_accuracy@0.5": test_subset,
             },
-            hparams={"epochs": args.epochs, "lr": args.lr},
+            hparams={"epochs": 0 if args.eval_only else args.epochs, "lr": args.lr, "eval_only": args.eval_only},
         )
     print({"best_val_macro_f1": best["val_macro_f1"], "test_subset_accuracy@0.5": test_subset})
 

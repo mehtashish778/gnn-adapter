@@ -299,19 +299,21 @@ Run inventory: `data/processed/experiments/<model_id>/<protocol>/runs_index.json
 
 ## 6. Results
 
-All numbers below are macro-F1, rounded to 4 decimals; raw 6-decimal values are in `runs_index.json` and the `metrics.json` of each run directory. The `default` columns use the 3-way split; the `calibrated4way` column uses the leakage-free 4-way split with thresholds tuned on `calib`.
+All numbers below are macro-F1, rounded to 4 decimals; raw 6-decimal values are in `runs_index.json` and the `metrics.json` of each run directory. The `default` columns use the 3-way split; the `calibrated4way` column uses the leakage-free 4-way split with thresholds tuned on `calib`. For `vlm_mlp`, the Default @0.5 pair is mirrored from `data/processed/experiments/baseline_mlp/metrics.json` (‡).
 
 ### 6.1 Main comparison
 
 | Model | Default Val @0.5 | Default Test @0.5 | Default Val @thr | Default Test @thr | Calib4way Val | **Calib4way Test** |
 |---|---:|---:|---:|---:|---:|---:|
 | `vlm_zeroshot` (frozen VLM) | NA | NA | NA | NA | NA | **0.4427**\* |
-| `vlm_mlp` (MLP adapter) | 0.6308 | 0.6198 | NA | NA | 0.6552 | **0.6547** |
+| `vlm_mlp` (MLP adapter) | 0.6221 | 0.6174 | NA | NA | 0.6552 | **0.6547** |
 | `gnn07_label_residual` | 0.0442 | 0.0423 | 0.6567 | 0.6516 | 0.6513 | **0.6512** |
 | `gnn12_clip_vlm_homo` | 0.6095 | 0.6013 | 0.6580 | 0.6526 | 0.6792 | **0.6777** |
 | `gnn13_clip_bipartite` | 0.6542 | 0.6371 | 0.6661 | 0.6599 | 0.6923 | **0.6889** |
 
 \* The frozen-VLM `Calib4way Test` figure is the per-class-threshold-on-`calib` macro-F1 of the unmodified VLM probabilities; it is the honest zero-shot reference. The standalone `@0.5` zero-shot F1 collapses to the trivial all-`No Finding` solution and is reported in `data/processed/experiments/baseline_frozen_vlm/metrics.json`.
+
+‡ **`vlm_mlp` Default @0.5 (val/test).** Produced with `scripts/06_run_baseline_mlp.py --eval_only` loading the archived training weights (`20260430`) at `data/processed/experiments_backup_20260430/experiments/vlm_mlp/default/fresh_full_retrain_20260430/best_checkpoint.pt` (also copied beside `vlm_mlp/default/.../` for tooling), evaluated on the current 3-way `data/processed/splits/{train,val,test}_rows.json`. Full floats and provenance (`checkpoint_loaded`) appear in `data/processed/experiments/baseline_mlp/metrics.json`. The calibrated4way columns for `vlm_mlp` are unchanged from the original 4-way thresholding run documented alongside this table.
 
 **Headline result.** Under the leakage-free protocol, `gnn13_clip_bipartite` delivers **macro-F1 = 0.6889** on test, beating the MLP baseline by **+3.4 F1**, the homogeneous CLIP+VLM GNN by **+1.1 F1**, the residual label-graph GNN by **+3.8 F1**, and the calibrated frozen VLM by **+24.6 F1**.
 
@@ -441,7 +443,7 @@ We argue that **GNN-based adapters are a practical recipe for domain adaptation 
 | 4-way splits | `03_make_multilabel_splits_4way.py` | `data/processed/splits_4way/{train_fit,calib,val,test}_rows.json` |
 | Co-error graph | `04_build_coerror_graph.py` | `data/processed/graph/{edge_index,edge_weight,...}.json` |
 | Frozen VLM eval | `05_run_baseline_frozen_vlm.py` | `.../baseline_frozen_vlm/metrics.json` |
-| MLP baseline | `06_run_baseline_mlp.py` | `.../vlm_mlp/<protocol>/<run_id>/{metrics,val,test,calib}_*.json` |
+| MLP baseline | `06_run_baseline_mlp.py` | `.../vlm_mlp/<protocol>/<run_id>/...`; legacy-eval bundle `data/processed/experiments/baseline_mlp/{metrics,val,test}_*.json` (‡ archival checkpoint `@0.5`). |
 | Residual GNN | `07_train_gnn_adapter.py` | `.../gnn07_label_residual/<protocol>/<run_id>/...` |
 | Threshold tuning | `08_tune_thresholds.py` | `.../thresholds/per_class_thresholds.json` |
 | Evaluation | `09_evaluate_test.py` | `.../final_eval/test_metrics.json` |

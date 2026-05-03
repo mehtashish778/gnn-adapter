@@ -1,5 +1,7 @@
 # MBZAI: Multi-Label Chest X-ray Baselines and GNN Adapters
 
+**Academic reference (methods, protocols, citations, full result table):** [`docs/academic_report.md`](docs/academic_report.md). Use that file as the canonical write-up; the diagram below is a short snapshot and may not match your local `metrics.json` if checkpoints or splits differ.
+
 This repository builds a multi-label classification pipeline over CheXpert-style data and compares:
 - frozen VLM baseline
 - MLP baseline over VLM outputs
@@ -33,7 +35,7 @@ flowchart TD
     LabelGraph --> GNN12
     BipartiteGraph --> GNN13
 
-    MLPBaseline --> MLPMetrics["MLP metrics\nDefault val/test@0.5: 0.630798 / 0.619763\nCalibrated4way val/test: 0.655214 / 0.654700"]
+    MLPBaseline --> MLPMetrics["MLP metrics\nDefault val/test@0.5: 0.622097 / 0.617362\nCalibrated4way val/test: 0.655214 / 0.654700\n(see baseline_mlp/metrics.json)"]
     GNN07 --> GNN07Metrics["GNN(07) metrics\nDefault val/test@0.5: 0.044226 / 0.042264\nDefault val/test@thr: 0.656653 / 0.651562\nCalibrated4way val/test: 0.651270 / 0.651220"]
     GNN12 --> GNN12Metrics["GNN(12) metrics\nDefault val/test@0.5: 0.609510 / 0.601287\nDefault val/test@thr: 0.657981 / 0.652601\nCalibrated4way val/test: 0.679169 / 0.677704"]
     GNN13 --> GNN13Metrics["GNN(13) metrics\nDefault val/test@0.5: 0.654243 / 0.637128\nDefault val/test@thr: 0.666138 / 0.659869\nCalibrated4way val/test: 0.692294 / 0.688872"]
@@ -171,5 +173,6 @@ The app uses trained artifacts under `data/processed/experiments/...` and associ
 
 ## Additional Documentation
 
+- **Paper-style report (canonical):** `docs/academic_report.md`
 - Pipeline details and config mapping: `docs/pipeline.md`
 - Metrics and fair-comparison protocol: `docs/metrics.md`
