@@ -89,21 +89,33 @@ def resolve_run_dir(model_id: str, protocol: str) -> Optional[Path]:
     return None
 
 
+def _checkpoint_exists(path: Path) -> bool:
+    return path.is_file()
+
+
 def resolve_checkpoint(
     model_id: str,
     protocol: str,
-    legacy_candidates: List[Path],
     *,
+    legacy_candidates: Optional[List[Path]] = None,
+    archived_legacy_candidates: Optional[List[Path]] = None,
     filename: str = "best_checkpoint.pt",
 ) -> Optional[Path]:
+    """Resolve adapter weights: prefer ``best.json`` / ``latest.json`` run dir, then non-archive legacy, then archived copies last."""
     run_dir = resolve_run_dir(model_id, protocol)
     if run_dir is not None:
         p = run_dir / filename
-        if p.exists():
+        if _checkpoint_exists(p):
             return p
-    for c in legacy_candidates:
-        if c.exists():
-            return c
+        # Older runs may omit best_checkpoint.pt; accept common alternates inside the resolved run folder only.
+        for alt in ("best_adapter.pt", "mlp_residual_best.pt", "adapter_best.pt"):
+            ap = run_dir / alt
+            if _checkpoint_exists(ap):
+                return ap
+    for group in (legacy_candidates or [], archived_legacy_candidates or []):
+        for c in group:
+            if _checkpoint_exists(c):
+                return c
     return None
 
 
@@ -203,46 +215,37 @@ class InferenceEngine:
         }
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model_dir = resolve_hf_model_dir(MODEL_PATH)
+        _ex = Path("data/processed/experiments")
+        _arc = _ex / "_archive_20260503"
         self.mlp_ckpt_path = resolve_checkpoint(
             "vlm_mlp",
             "default",
             legacy_candidates=[
-                Path(
-                    "data/processed/experiments/_archive_20260503/baseline_mlp/best_checkpoint.pt"
-                ),
-                Path(
-                    "data/processed/experiments/_archive_20260503/multilabel_adapter/mlp_residual_best.pt"
-                ),
+                _ex / "baseline_mlp" / "best_checkpoint.pt",
+                _ex / "multilabel_adapter" / "mlp_residual_best.pt",
+            ],
+            archived_legacy_candidates=[
+                _arc / "baseline_mlp" / "best_checkpoint.pt",
+                _arc / "multilabel_adapter" / "mlp_residual_best.pt",
             ],
         )
         self.gnn_ckpt_path = resolve_checkpoint(
             "gnn07_label_residual",
             "default",
-            legacy_candidates=[
-                Path(
-                    "data/processed/experiments/_archive_20260503/gnn_adapter/best_checkpoint.pt"
-                ),
-            ],
+            legacy_candidates=[_ex / "gnn_adapter" / "best_checkpoint.pt"],
+            archived_legacy_candidates=[_arc / "gnn_adapter" / "best_checkpoint.pt"],
         )
         self.gnn12_ckpt_path = resolve_checkpoint(
             "gnn12_clip_vlm_homo",
             "default",
-            legacy_candidates=[
-                Path(
-                    "data/processed/experiments/_archive_20260503/"
-                    "clip_vlm_gnn_adapter/best_checkpoint.pt"
-                )
-            ],
+            legacy_candidates=[_ex / "clip_vlm_gnn_adapter" / "best_checkpoint.pt"],
+            archived_legacy_candidates=[_arc / "clip_vlm_gnn_adapter" / "best_checkpoint.pt"],
         )
         self.gnn13_ckpt_path = resolve_checkpoint(
             "gnn13_clip_bipartite",
             "default",
-            legacy_candidates=[
-                Path(
-                    "data/processed/experiments/_archive_20260503/"
-                    "bipartite_clip_gnn_adapter/best_checkpoint.pt"
-                )
-            ],
+            legacy_candidates=[_ex / "bipartite_clip_gnn_adapter" / "best_checkpoint.pt"],
+            archived_legacy_candidates=[_arc / "bipartite_clip_gnn_adapter" / "best_checkpoint.pt"],
         )
 
         self.processor = AutoProcessor.from_pretrained(self.model_dir, local_files_only=True)
@@ -513,7 +516,9 @@ def build_app():
             "- `LabelGraphResidualGNN` (adapter over label graph)\n"
             "- `ClipVlmHomogeneousGNN`\n"
             "- `ClipBipartiteAttributeGNN`\n\n"
-            "Note: each model uses its own calibrated thresholds when available."
+            "Adapter weights load from ``data/processed/experiments/<model_id>/<protocol>/best.json`` "
+            "(``repro_full_*`` checkpoints first); archived copies under ``_archive_*`` are used only if those are missing. "
+            "Each column uses calibrated4way thresholds when present."
         )
 
         with gr.Row():
