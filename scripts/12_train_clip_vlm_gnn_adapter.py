@@ -32,7 +32,12 @@ from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
 from transformers import CLIPModel, CLIPProcessor
 
-from common_multilabel import clip_image_embeds_tensor, resolve_dataset_image_path, write_json
+from common_multilabel import (
+    clip_image_embeds_tensor,
+    masked_subset_accuracy,
+    resolve_dataset_image_path,
+    write_json,
+)
 from model_registry import resolve_experiment_dir, update_run_registry
 
 
@@ -612,6 +617,17 @@ def main():
         masked_macro_f1(test_prob.to(device), te_y_d, te_m_d, threshold=thr_list) if thr_list is not None else test_f1
     )
 
+    val_vp, va_y_dev, va_m_dev = val_prob.to(device), va_y_d, va_m_d
+    val_sub = masked_subset_accuracy(val_vp, va_y_dev, va_m_dev, threshold=0.5)
+    test_sub = masked_subset_accuracy(test_prob.to(device), te_y_d, te_m_d, threshold=0.5)
+    calib_sub = None
+    calib_sub_thr = None
+    if calib_rows is not None:
+        calib_sub = masked_subset_accuracy(calib_prob.to(device), ca_y_d, ca_m_d, threshold=0.5)
+        calib_sub_thr = masked_subset_accuracy(calib_prob.to(device), ca_y_d, ca_m_d, threshold=thr_list) if thr_list is not None else calib_sub
+    val_sub_thr = masked_subset_accuracy(val_vp, va_y_dev, va_m_dev, threshold=thr_list) if thr_list is not None else val_sub
+    test_sub_thr = masked_subset_accuracy(test_prob.to(device), te_y_d, te_m_d, threshold=thr_list) if thr_list is not None else test_sub
+
     out_dir = resolve_experiment_dir(
         out_dir=args.out_dir or None,
         model_id=args.model_id or None,
@@ -644,10 +660,16 @@ def main():
         "test_macro_f1@0.5": test_f1,
         "val_macro_f1@per_class_thr": val_f1_thr_eval,
         "test_macro_f1@per_class_thr": test_f1_thr_eval,
+        "val_subset_accuracy@0.5": val_sub,
+        "test_subset_accuracy@0.5": test_sub,
+        "val_subset_accuracy@per_class_thr": val_sub_thr,
+        "test_subset_accuracy@per_class_thr": test_sub_thr,
     }
     if calib_rows is not None:
         metrics_payload["calib_macro_f1@0.5"] = calib_f1
         metrics_payload["calib_macro_f1@per_class_thr"] = calib_f1_thr_eval
+        metrics_payload["calib_subset_accuracy@0.5"] = calib_sub
+        metrics_payload["calib_subset_accuracy@per_class_thr"] = calib_sub_thr
     write_json(out_dir / "metrics.json", metrics_payload)
     write_json(out_dir / "history.json", history)
     write_json(
@@ -673,6 +695,10 @@ def main():
                 "test_macro_f1@0.5": test_f1,
                 "val_macro_f1@per_class_thr": val_f1_thr_eval,
                 "test_macro_f1@per_class_thr": test_f1_thr_eval,
+                "val_subset_accuracy@0.5": val_sub,
+                "test_subset_accuracy@0.5": test_sub,
+                "val_subset_accuracy@per_class_thr": val_sub_thr,
+                "test_subset_accuracy@per_class_thr": test_sub_thr,
             },
             hparams={"epochs": len(history), "lr": args.lr, "best_metric": best_metric, "gnn_layers": args.gnn_layers},
         )
@@ -682,6 +708,8 @@ def main():
             "best_score": best["score"],
             "val_macro_f1@0.5": val_f1,
             "test_macro_f1@0.5": test_f1,
+            "test_subset_accuracy@0.5": test_sub,
+            "test_subset_accuracy@per_class_thr": test_sub_thr,
             "val_macro_f1@per_class_thr": val_f1_thr_eval,
             "test_macro_f1@per_class_thr": test_f1_thr_eval,
         }

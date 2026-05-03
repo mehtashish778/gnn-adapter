@@ -4,7 +4,7 @@ import math
 import random
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Sequence, Tuple, Union
 
 
 VLM_LABELS = [
@@ -115,6 +115,62 @@ def sigmoid(x: float) -> float:
 def f1_from_counts(tp: int, fp: int, fn: int) -> float:
     denom = 2 * tp + fp + fn
     return (2 * tp / denom) if denom else 0.0
+
+
+def subset_accuracy_masked_lists(
+    probs: Sequence[Sequence[float]],
+    y_true: Sequence[Sequence[float]],
+    y_mask: Sequence[Sequence[float]],
+    thresholds: Sequence[float],
+) -> Tuple[float, int]:
+    """
+    Exact multi-label match rate: fraction of samples where binary predictions match y_true on
+    every label with y_mask > 0. Rows with no supervised labels are skipped.
+
+    Returns (accuracy, n_samples_used).
+    """
+    c = len(thresholds)
+    n_exact = n_used = 0
+    for y, m, p in zip(y_true, y_mask, probs):
+        if sum(int(mi != 0) for mi in m) == 0:
+            continue
+        n_used += 1
+        ok = True
+        for i in range(c):
+            if m[i] == 0:
+                continue
+            pred = 1 if float(p[i]) >= float(thresholds[i]) else 0
+            if pred != int(y[i]):
+                ok = False
+                break
+        if ok:
+            n_exact += 1
+    return (n_exact / n_used, n_used) if n_used else (0.0, 0)
+
+
+def masked_subset_accuracy(
+    probs: Any,
+    y_true: Any,
+    y_mask: Any,
+    threshold: Union[float, Sequence[float]] = 0.5,
+) -> float:
+    """
+    Torch version of subset_accuracy_masked_lists. probs/y_true/y_mask shape (N, C).
+    """
+    import torch
+
+    if isinstance(threshold, (list, tuple)):
+        thr = torch.tensor(threshold, dtype=probs.dtype, device=probs.device)
+        pred = (probs >= thr.unsqueeze(0)).float()
+    else:
+        pred = (probs >= float(threshold)).float()
+    supervised = y_mask > 0
+    used_rows = supervised.any(dim=1)
+    if used_rows.sum() == 0:
+        return 0.0
+    mismatch = ((pred != y_true) & supervised).any(dim=1)
+    ok = (~mismatch) & used_rows
+    return (ok.sum().float() / used_rows.sum().float()).item()
 
 
 def train_val_test_split(

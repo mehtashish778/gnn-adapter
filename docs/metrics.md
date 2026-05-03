@@ -10,6 +10,16 @@ Primary metric is macro F1 over labels with masking (`y_mask`):
 
 Masking matters because some labels are missing/unmentioned.
 
+## Subset accuracy (exact multi-label match)
+
+Also reported beside macro F1 (for example `09_evaluate_test.py` outputs and keys like `*_subset_accuracy@0.5` in experiment `metrics.json`):
+
+- For each sample with at least one label where `y_mask > 0`, threshold probabilities to binary predictions.
+- The sample counts as correct only if predictions equal ground truth **on every** masked-in label simultaneously (exact set match on supervised dimensions).
+- The rate is `# correct samples / # samples with any supervised label`. Rows with **no** supervised labels are skipped (same spirit as masking for F1).
+
+This is **stricter** than macro F1 (which averages per-label F1).
+
 ## Where to Read Metrics
 
 - Organized path (primary):

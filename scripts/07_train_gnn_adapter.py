@@ -3,7 +3,7 @@ import argparse
 import json
 from pathlib import Path
 
-from common_multilabel import write_json
+from common_multilabel import masked_subset_accuracy, write_json
 from model_registry import resolve_experiment_dir, update_run_registry
 
 
@@ -350,6 +350,17 @@ def main():
             masked_macro_f1(calib_prob, ca_y, ca_m, threshold=thr_list) if thr_list is not None else calib_f1
         )
 
+    val_sub = masked_subset_accuracy(val_prob, va_y, va_m, threshold=0.5)
+    test_sub = masked_subset_accuracy(test_prob, te_y, te_m, threshold=0.5)
+    calib_sub = None
+    if calib_rows is not None:
+        calib_sub = masked_subset_accuracy(calib_prob, ca_y, ca_m, threshold=0.5)
+    val_sub_thr = masked_subset_accuracy(val_prob, va_y, va_m, threshold=thr_list) if thr_list is not None else val_sub
+    test_sub_thr = masked_subset_accuracy(test_prob, te_y, te_m, threshold=thr_list) if thr_list is not None else test_sub
+    calib_sub_thr = None
+    if calib_rows is not None:
+        calib_sub_thr = masked_subset_accuracy(calib_prob, ca_y, ca_m, threshold=thr_list) if thr_list is not None else calib_sub
+
     out_dir = resolve_experiment_dir(
         out_dir=args.out_dir or None,
         model_id=args.model_id or None,
@@ -380,10 +391,16 @@ def main():
         "test_macro_f1@0.5": test_f1,
         "val_macro_f1@per_class_thr": val_f1_thr_eval,
         "test_macro_f1@per_class_thr": test_f1_thr_eval,
+        "val_subset_accuracy@0.5": val_sub,
+        "test_subset_accuracy@0.5": test_sub,
+        "val_subset_accuracy@per_class_thr": val_sub_thr,
+        "test_subset_accuracy@per_class_thr": test_sub_thr,
     }
     if calib_rows is not None:
         metrics_payload["calib_macro_f1@0.5"] = calib_f1
         metrics_payload["calib_macro_f1@per_class_thr"] = calib_f1_thr_eval
+        metrics_payload["calib_subset_accuracy@0.5"] = calib_sub
+        metrics_payload["calib_subset_accuracy@per_class_thr"] = calib_sub_thr
     write_json(out_dir / "metrics.json", metrics_payload)
     write_json(out_dir / "history.json", history)
     write_json(
@@ -409,6 +426,10 @@ def main():
                 "test_macro_f1@0.5": test_f1,
                 "val_macro_f1@per_class_thr": val_f1_thr_eval,
                 "test_macro_f1@per_class_thr": test_f1_thr_eval,
+                "val_subset_accuracy@0.5": val_sub,
+                "test_subset_accuracy@0.5": test_sub,
+                "val_subset_accuracy@per_class_thr": val_sub_thr,
+                "test_subset_accuracy@per_class_thr": test_sub_thr,
             },
             hparams={
                 "epochs": len(history),
@@ -424,6 +445,8 @@ def main():
             "best_score": best["score"],
             "val_macro_f1@0.5": val_f1,
             "test_macro_f1@0.5": test_f1,
+            "test_subset_accuracy@0.5": test_sub,
+            "test_subset_accuracy@per_class_thr": test_sub_thr,
             "val_macro_f1@per_class_thr": val_f1_thr_eval,
             "test_macro_f1@per_class_thr": test_f1_thr_eval,
         }

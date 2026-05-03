@@ -3,7 +3,7 @@ import argparse
 import json
 from pathlib import Path
 
-from common_multilabel import f1_from_counts, write_json
+from common_multilabel import f1_from_counts, subset_accuracy_masked_lists, write_json
 from model_registry import resolve_experiment_dir, update_run_registry
 
 
@@ -12,10 +12,16 @@ def evaluate(rows, thresholds):
     tp = [0] * c
     fp = [0] * c
     fn = [0] * c
+    all_probs = []
+    all_y = []
+    all_m = []
     for row in rows:
         probs = row["x_probs"]
         y = row["y_true"]
         m = row["y_mask"]
+        all_probs.append(probs)
+        all_y.append(y)
+        all_m.append(m)
         for i in range(c):
             if m[i] == 0:
                 continue
@@ -28,7 +34,8 @@ def evaluate(rows, thresholds):
                 fn[i] += 1
     per_class_f1 = [f1_from_counts(tp[i], fp[i], fn[i]) for i in range(c)]
     macro_f1 = sum(per_class_f1) / c
-    return {"macro_f1": macro_f1, "per_class_f1": per_class_f1}
+    subset_acc, subset_n = subset_accuracy_masked_lists(all_probs, all_y, all_m, thresholds)
+    return {"macro_f1": macro_f1, "subset_accuracy": subset_acc, "subset_n_examples": subset_n, "per_class_f1": per_class_f1}
 
 
 def main():
@@ -69,10 +76,19 @@ def main():
             metrics={
                 "val_macro_f1": val_metrics["macro_f1"],
                 "test_macro_f1": test_metrics["macro_f1"],
+                "val_subset_accuracy": val_metrics["subset_accuracy"],
+                "test_subset_accuracy": test_metrics["subset_accuracy"],
             },
             hparams={"threshold": args.threshold},
         )
-    print({"val_macro_f1": val_metrics["macro_f1"], "test_macro_f1": test_metrics["macro_f1"]})
+    print(
+        {
+            "val_macro_f1": val_metrics["macro_f1"],
+            "test_macro_f1": test_metrics["macro_f1"],
+            "val_subset_accuracy": val_metrics["subset_accuracy"],
+            "test_subset_accuracy": test_metrics["subset_accuracy"],
+        }
+    )
 
 
 if __name__ == "__main__":

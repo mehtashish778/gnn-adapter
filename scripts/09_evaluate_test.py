@@ -3,7 +3,7 @@ import argparse
 import json
 from pathlib import Path
 
-from common_multilabel import f1_from_counts, write_json
+from common_multilabel import f1_from_counts, subset_accuracy_masked_lists, write_json
 
 
 def eval_with_thresholds(data, thresholds):
@@ -32,7 +32,13 @@ def eval_with_thresholds(data, thresholds):
         prec = tp / (tp + fp) if (tp + fp) else 0.0
         per_class.append({"f1": f1, "recall": rec, "precision": prec, "tp": tp, "fp": fp, "fn": fn, "tn": tn})
     macro_f1 = sum(x["f1"] for x in per_class) / c
-    return {"macro_f1": macro_f1, "per_class": per_class}
+    subset_acc, subset_n = subset_accuracy_masked_lists(probs, y_true, y_mask, thresholds)
+    return {
+        "macro_f1": macro_f1,
+        "subset_accuracy": subset_acc,
+        "subset_n_examples": subset_n,
+        "per_class": per_class,
+    }
 
 
 def main():
@@ -49,7 +55,7 @@ def main():
 
     out = eval_with_thresholds(test_data, thresholds)
     write_json(Path(args.out_json), out)
-    print({"macro_f1": out["macro_f1"]})
+    print({"macro_f1": out["macro_f1"], "subset_accuracy": out["subset_accuracy"], "subset_n_examples": out["subset_n_examples"]})
 
 
 if __name__ == "__main__":

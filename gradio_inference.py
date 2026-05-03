@@ -279,6 +279,8 @@ class InferenceEngine:
         output_dim = int(state[k3].shape[0])
         self.mlp_input_dim = input_dim
         model = MLPResidual(input_dim=input_dim, hidden_dim=hidden_dim, output_dim=output_dim)
+        if "net.0.weight" not in state and "0.weight" in state:
+            state = {f"net.{k}": v for k, v in state.items()}
         model.load_state_dict(state)
         model.to(self.device).eval()
         return model

@@ -23,6 +23,7 @@ data/processed/
 data/outputs_vlm_corrected/
 data/outputs_vlm_corrected copy/
 data/hf_cache/
+data/hf_cache_fresh_20260430/
 data/outputs/vlm_outputs*.jsonl
 reports/
 

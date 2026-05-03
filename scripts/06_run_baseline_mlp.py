@@ -3,7 +3,7 @@ import argparse
 import json
 from pathlib import Path
 
-from common_multilabel import write_json
+from common_multilabel import masked_subset_accuracy, write_json
 from model_registry import resolve_experiment_dir, update_run_registry
 
 
@@ -130,6 +130,8 @@ def main():
     with torch.no_grad():
         val_prob = torch.sigmoid(model(xva))
         test_prob = torch.sigmoid(model(xte))
+    val_subset = masked_subset_accuracy(val_prob, yva, mva, threshold=0.5)
+    test_subset = masked_subset_accuracy(test_prob, yte, mte, threshold=0.5)
     out_dir = resolve_experiment_dir(
         out_dir=args.out_dir or None,
         model_id=args.model_id or None,
@@ -142,7 +144,15 @@ def main():
         out_dir / "val_predictions.json",
         {"probs": val_prob.tolist(), "y_true": yva.tolist(), "y_mask": mva.tolist()},
     )
-    write_json(out_dir / "metrics.json", {"best_val_macro_f1": best["val_macro_f1"], "test_macro_f1@0.5": macro_f1(test_prob, yte, mte)})
+    write_json(
+        out_dir / "metrics.json",
+        {
+            "best_val_macro_f1": best["val_macro_f1"],
+            "val_subset_accuracy@0.5": val_subset,
+            "test_macro_f1@0.5": macro_f1(test_prob, yte, mte),
+            "test_subset_accuracy@0.5": test_subset,
+        },
+    )
     torch.save(model.state_dict(), out_dir / "best_checkpoint.pt")
     write_json(
         out_dir / "test_predictions.json",
@@ -163,10 +173,12 @@ def main():
             metrics={
                 "val_macro_f1@0.5": best["val_macro_f1"],
                 "test_macro_f1@0.5": macro_f1(test_prob, yte, mte),
+                "val_subset_accuracy@0.5": val_subset,
+                "test_subset_accuracy@0.5": test_subset,
             },
             hparams={"epochs": args.epochs, "lr": args.lr},
         )
-    print({"best_val_macro_f1": best["val_macro_f1"]})
+    print({"best_val_macro_f1": best["val_macro_f1"], "test_subset_accuracy@0.5": test_subset})
 
 
 if __name__ == "__main__":
