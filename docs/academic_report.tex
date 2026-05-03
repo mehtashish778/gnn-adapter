@@ -1,0 +1,1442 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+\PassOptionsToPackage{dvipsnames,svgnames,x11names}{xcolor}
+%
+\documentclass[
+  11pt,
+]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+  \setmainfont[]{DejaVu Serif}
+  \setmonofont[]{DejaVu Sans Mono}
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\usepackage[margin=2.54cm]{geometry}
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\newenvironment{Shaded}{}{}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{1.00,0.00,0.00}{\textbf{#1}}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.49,0.56,0.16}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\BuiltInTok}[1]{\textcolor[rgb]{0.00,0.50,0.00}{#1}}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textit{#1}}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.53,0.00,0.00}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{\textbf{#1}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.56,0.13,0.00}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.73,0.13,0.13}{\textit{#1}}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{1.00,0.00,0.00}{\textbf{#1}}}
+\newcommand{\ExtensionTok}[1]{#1}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.02,0.16,0.49}{#1}}
+\newcommand{\ImportTok}[1]{\textcolor[rgb]{0.00,0.50,0.00}{\textbf{#1}}}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{#1}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.40,0.40,0.40}{#1}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{#1}}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.74,0.48,0.00}{#1}}
+\newcommand{\RegionMarkerTok}[1]{#1}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.73,0.40,0.53}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.10,0.09,0.49}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\usepackage{longtable,booktabs,array}
+\usepackage{calc} % for calculating minipage widths
+% Correct order of tables after \paragraph or \subparagraph
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd\longtable{\par}{\if@noskipsec\mbox{}\fi\par}{}{}
+\makeatother
+% Allow footnotes in longtable head/foot
+\IfFileExists{footnotehyper.sty}{\usepackage{footnotehyper}}{\usepackage{footnote}}
+\makesavenoteenv{longtable}
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\ifLuaTeX
+  \usepackage{selnolig}  % disable illegal ligatures
+\fi
+\usepackage{bookmark}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  colorlinks=true,
+  linkcolor={Maroon},
+  filecolor={Maroon},
+  citecolor={Blue},
+  urlcolor={Blue},
+  pdfcreator={LaTeX via pandoc}}
+
+\author{}
+\date{}
+
+\begin{document}
+
+\section{Graph Neural Network Adapters for Multi-Label Chest X-Ray
+Classification Without VLM Fine-Tuning: Frozen Scorers, Structured
+Heads, and Leakage-Free
+Calibration}\label{graph-neural-network-adapters-for-multi-label-chest-x-ray-classification-without-vlm-fine-tuning-frozen-scorers-structured-heads-and-leakage-free-calibration}
+
+\textbf{Repository:} MBZAI multi-label CXR pipeline \textbf{Codebase:}
+\texttt{scripts/01–13}, \texttt{configs/}, \texttt{gradio\_inference.py}
+\textbf{Dataset:} CheXpert-v1.0-small (Frontal + Lateral) \textbf{Label
+space:}
+\texttt{\{Atelectasis,\ Cardiomegaly,\ Effusion,\ Pneumonia,\ Edema,\ Consolidation,\ No\ Finding\}}
+(\(C=7\))
+
+\textbf{Positioning.} The central proposal is \textbf{domain adaptation
+for multi-label classification without fine-tuning the VLM}: keep the
+foundation model frozen (one-time inference or API scores), and learn a
+\textbf{small graph-based adapter} that maps VLM outputs---and
+optionally a second frozen image encoder---into calibrated logits for
+the target domain (here, CheXpert-style labels and masking). That trades
+\textbf{full VLM fine-tuning} (GPU memory, catastrophic forgetting,
+data-hungry updates) for \textbf{adapter training} on cheap tabular
+tensors
+\((x_{\text{logits}}, x_{\text{probs}}, y_{\text{true}}, y_{\text{mask}})\)
+plus optional CLIP embeddings.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsection{Abstract}\label{abstract}
+
+We \textbf{propose graph neural network (GNN) adapters as a practical
+alternative to end-to-end VLM fine-tuning} for multi-label chest X-ray
+classification: the VLM stays frozen while a lightweight head performs
+\textbf{domain-specific calibration and structured reasoning} over
+labels. Concretely, we re-calibrate a frozen Qwen2-VL-2B-Instruct
+baseline on CheXpert and compare four adapters of increasing structure:
+(i) an MLP over VLM logit/probability vectors; (ii) a residual
+label-graph GNN on a \emph{co-error} adjacency mined from training
+disagreements; (iii) a homogeneous CLIP-conditioned label-graph GNN; and
+(iv) a bipartite \emph{attribute → object} GNN with frozen CLIP object
+features and VLM attribute nodes. All adapters use masked,
+class-weighted binary cross-entropy on patient-grouped splits and are
+evaluated under (a) fixed \(t=0.5\) and (b) a leakage-free 4-way
+\emph{train/calib/val/test} protocol with per-class thresholds tuned
+\textbf{only} on \texttt{calib}. The bipartite CLIP variant
+(\texttt{gnn13\_clip\_bipartite}) reaches the best calibrated test
+macro-F1 of \textbf{0.6889}, \textbf{+3.4} over the calibrated MLP
+(\textbf{0.6544}) and \textbf{+3.8} over the same leakage-free
+calibrated reference applied to frozen VLM probabilities
+(\textbf{0.6512}; i.e.~exported \texttt{x\_probs} with thresholds fit on
+\texttt{calib} only---see §6.1). Naive \(t=0.5\) macro-F1 on the frozen
+model remains \(\approx 0.047\) because logits are systematically
+negative off \texttt{No\ Finding}. We also show how threshold tuning on
+the same split as evaluation can inflate macro-F1 for poorly calibrated
+logits---a methodological artifact, not model capacity---and document
+how to avoid it with a held-out \texttt{calib} split (§6.2).
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsection{1. Introduction}\label{introduction}
+
+\textbf{Thesis.} Fine-tuning a large VLM for every new hospital, label
+set, or policy change is often \textbf{prohibitively expensive}: it
+requires gradient updates through billions of parameters, careful replay
+or regularization to limit forgetting, and substantial curated data. A
+complementary strategy is \textbf{post-hoc domain adaptation at the
+decision layer}: treat the VLM as a fixed feature generator
+\(f_{\text{VLM}}(x)\mapsto (z,p)\in\mathbb{R}^{2C}\) (and optionally a
+second frozen encoder \(e_{\text{CLIP}}(I)\)), then learn a small module
+\(g_\theta\) with \(\lvert\theta\rvert \ll \lvert\text{VLM}\rvert\) so
+that \(\hat z = g_\theta(z,p,e)\) matches the target domain's labels and
+masking. \textbf{GNN-based \(g_\theta\)} is attractive because
+multi-label CXR findings are \textbf{not independent}: co-occurrence,
+mutual exclusion, and systematic error patterns are naturally expressed
+as \textbf{message passing on a label graph} or as
+\textbf{attribute→image bipartite} structure---inductive biases that a
+flat MLP must rediscover from data alone.
+
+Multi-label classification of chest X-rays under the CheXpert label
+policy still presents three coupled difficulties even under this adapter
+framing: (1) extreme \textbf{class imbalance}, (2) \textbf{uncertain
+(-1) labels} that must be policy-mapped, and (3) \textbf{miscalibrated}
+zero-shot VLM probabilities (often dominated by \texttt{No\ Finding} at
+naive thresholds). We keep the VLM frozen and ask three empirical
+questions that stress-test the \textbf{GNN-as-domain-adapter} idea:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Is structure useful?} Does encoding label
+  co-occurrence/co-error as a graph help over a flat MLP that already
+  sees the full \([\,x_{\text{logit}};\,x_{\text{prob}}\,]\) vector?
+\item
+  \textbf{Is the image useful again?} Once we already have VLM scores,
+  is there marginal value in re-injecting a \emph{different} frozen
+  image encoder (CLIP)?
+\item
+  \textbf{Is the wiring useful?} Does the bipartite \emph{attribute →
+  object} topology provide a better inductive bias than a homogeneous
+  label graph?
+\end{enumerate}
+
+To answer these in a way that is \textbf{not contaminated by
+threshold-tuning leakage}, we build a 4-way patient-grouped split
+(\texttt{train\_fit\ /\ calib\ /\ val\ /\ test}) and frozen per-class
+thresholds that are \emph{only} tuned on \texttt{calib} and then
+re-applied unchanged to \texttt{val} and \texttt{test}. All five models
+in our comparison (zero-shot, MLP, three GNNs) are evaluated under this
+identical protocol.
+
+\subsubsection{1.1 What ``domain adaptation without finetuning'' buys
+you}\label{what-domain-adaptation-without-finetuning-buys-you}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Aspect
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Full VLM fine-tuning
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+GNN (or MLP) adapter on frozen \((z,p)\)
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Trainable parameters & \(10^9\)--\(10^{10}\) & \(10^4\)--\(10^6\) in
+this repo \\
+GPU memory at train & Very high (vision + LM) & Low (small tensors +
+optional CLIP cache) \\
+Forgetting / drift & Risk when updating foundation & None on the VLM;
+only \(\theta\) changes \\
+New label policy or site & Often re-finetune & Re-align JSONL + retrain
+adapter + retune thresholds \\
+Domain knowledge & Implicit in gradients & Explicit in graph topology
+(co-error, bipartite) \\
+\end{longtable}
+
+The \textbf{GNN variants} add one more lever: \textbf{structured
+transfer}---sharing statistical strength across labels via
+edges---without ever backpropagating into the VLM. That is the sense in
+which this work is a \textbf{proposal for cheap domain adaptation}
+rather than a claim that GNNs always beat MLPs (under fair calibration,
+residual label-graph and MLP are close; CLIP + bipartite is where
+structure pays).
+
+\subsubsection{Contributions}\label{contributions}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Conceptual proposal:} \textbf{GNN-based adapters as a
+  frozen-VLM alternative to fine-tuning} for multi-label CXR: adapt the
+  \emph{output distribution and label dependencies} to the target domain
+  while the foundation model remains a fixed scorer.
+\item
+  \textbf{Adapter family} spanning four distinct inductive biases over
+  the same frozen VLM outputs (\texttt{vlm\_zeroshot},
+  \texttt{vlm\_mlp}, \texttt{gnn07\_label\_residual},
+  \texttt{gnn12\_clip\_vlm\_homo}, \texttt{gnn13\_clip\_bipartite}),
+  each registered in a small model registry
+  (\texttt{scripts/model\_registry.py}) for organized, reproducible run
+  management.
+\item
+  \textbf{Co-error label graph}: a sparsified, row-normalized directed
+  adjacency built from VLM disagreements on the training split
+  (\texttt{scripts/04\_build\_coerror\_graph.py}), which serves as the
+  structural prior for the residual and homogeneous GNNs.
+\item
+  \textbf{Bipartite NativeGNN}: a CLIP-object / VLM-attribute
+  message-passing network with optional VLM-positive edge masking
+  (\texttt{scripts/gnn\_bipartite.py},
+  \texttt{scripts/13\_train\_bipartite\_gnn\_adapter.py}).
+\item
+  \textbf{Fairness-aware evaluation}: a 4-way calibrated protocol
+  (\texttt{scripts/03\_make\_multilabel\_splits\_4way.py},
+  \texttt{scripts/08\_tune\_thresholds.py},
+  \texttt{scripts/09\_evaluate\_test.py}) that quantifies and removes
+  the threshold-tuning leakage that otherwise inflates GNN scores by
+  tens of F1 points.
+\item
+  \textbf{Empirical findings} reported in §6, with a root-cause analysis
+  (§7) of the most common evaluation pitfalls and the genuine gains of
+  CLIP injection and bipartite wiring.
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsection{2. Related Work}\label{related-work}
+
+\textbf{CheXpert and uncertain labels.} CheXpert (Irvin et al., 2019)
+introduced the U-Ones / U-Zeros / U-Ignore policies for the \texttt{-1}
+(uncertain) label. We use \textbf{U-Zeros} with explicit masking: empty
+entries set both \texttt{y} and \texttt{mask} to 0, so excluded samples
+contribute nothing to the loss or to per-class F1.
+
+\textbf{Frozen-foundation adapters.} A growing body of work freezes a
+large pretrained encoder and trains a small adapter for downstream tasks
+(LoRA, prefix tuning, linear probes). For multi-label classification
+specifically, Chen et al.~(2019, ML-GCN) proposed using a
+label-correlation graph to refine class-wise predictions. Our
+\texttt{gnn07} variant is a streamlined residual realization of this
+idea: nodes are labels, features are per-row
+\((\text{logit}_i, \text{prob}_i)\), and a single message-passing step
+adds a residual on top of the VLM logits.
+
+\textbf{CLIP for medical imaging.} CLIP (Radford et al., 2021) is not a
+chest-X-ray-specialised encoder, but its image embeddings are a cheap,
+complementary signal to those of any other VLM. We use a frozen
+\texttt{openai/clip-vit-base-patch32} image branch and project it into
+the GNN node space (\texttt{gnn12}) or into a dedicated \emph{object}
+node (\texttt{gnn13}).
+
+\textbf{Bipartite attribute graphs.} Encoding \emph{instances} and
+\emph{targets} as different node roles is classic in heterogeneous and
+relational graph networks: message passing can traverse
+\textbf{bipartite incidence structure} rather than enforcing a
+homogeneous \(C\!\times\!C\) label graph everywhere. Foundations include
+\textbf{relational GCN} for typed edges between entity kinds
+(Schlichtkrull et al., 2018), \textbf{semantic-level meta-path attentive
+aggregation} across multiple node roles (Wang et al., 2019, HAN), and
+the modular \textbf{Neural Message Passing} view in which pairwise
+updates generalize heterogeneous interaction patterns (Gilmer et al.,
+2017). Our bipartite instantiation places \textbf{one CLIP-derived
+object node per image} and \textbf{\(C\) VLM-attribute nodes}, with
+weighted-mean attribute→object pooling before readout---a lightweight
+inductive bias aligned with CXR semantics without depending on PyG
+(\texttt{scripts/gnn\_bipartite.py}).
+
+\textbf{Threshold calibration.} Per-label operating points tie directly
+to probabilistic calibration and \textbf{proper scoring} viewpoints
+(Niculescu-Mizil \& Caruana, 2005; Guo et al., 2017). Selecting
+thresholds by grid search remains common in multi-label setups (Lipton
+et al., 2014 optimise F-measure via threshold choices). Critically:
+\textbf{fitting thresholds---or any discrete decision rule---on the same
+split later used as a ``selection'' metric} induces optimistic bias
+(Varma \& Simon, 2006; Cawley \& Talbot, 2010). Our
+\textbf{\texttt{calib}} split mirrors the textbook fix used in unbiased
+model comparison: isolate post-hoc threshold fitting on disjoint data,
+unchanged when applied to validation and held-out test. §6 quantifies
+how badly that discipline matters when logits are saturated.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsection{3. Dataset and
+Preprocessing}\label{dataset-and-preprocessing}
+
+\subsubsection{3.1 Source}\label{source}
+
+We use \textbf{CheXpert-v1.0-small} with the standard \texttt{train.csv}
+(≈223k rows after header) and \texttt{valid.csv} (234 rows). Both are
+CSVs with one row per study + view; each row contains 14 finding
+columns. We restrict to the 7-label canonical space below.
+
+\subsubsection{\texorpdfstring{3.2 Canonical label mapping
+(\texttt{scripts/common\_multilabel.py})}{3.2 Canonical label mapping (scripts/common\_multilabel.py)}}\label{canonical-label-mapping-scriptscommon_multilabel.py}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{"Atelectasis"     {-}\textgreater{} "Atelectasis"}
+\NormalTok{"Cardiomegaly"    {-}\textgreater{} "Cardiomegaly"}
+\NormalTok{"Pleural Effusion"{-}\textgreater{} "Effusion"}
+\NormalTok{"Pneumonia"       {-}\textgreater{} "Pneumonia"}
+\NormalTok{"Edema"           {-}\textgreater{} "Edema"}
+\NormalTok{"Consolidation"   {-}\textgreater{} "Consolidation"}
+\NormalTok{"No Finding"      {-}\textgreater{} "No Finding"}
+\end{Highlighting}
+\end{Shaded}
+
+Uncertain (-1) labels are mapped via
+\texttt{parse\_uncertain(value,\ policy="u\_zeros")}:
+\texttt{1\ →\ (1,1)}, \texttt{0\ →\ (0,1)}, \texttt{-1\ →\ (0,1)} under
+U-Zeros, and empty → \texttt{(0,0)}. The \texttt{mask=0} entries are
+excluded from both loss and F1 computation, which is the single most
+important detail for honest multi-label evaluation on CheXpert.
+
+\subsubsection{\texorpdfstring{3.3 VLM alignment
+(\texttt{scripts/02\_align\_vlm\_outputs.py})}{3.3 VLM alignment (scripts/02\_align\_vlm\_outputs.py)}}\label{vlm-alignment-scripts02_align_vlm_outputs.py}
+
+We score every image once with \textbf{Qwen2-VL-2B-Instruct} (zero-shot,
+structured-prompt-and-parse) and persist
+\texttt{\{path,\ scores:\ \{label:\ prob\}\}} to JSONL shards under
+\texttt{data/outputs\_vlm\_corrected/}. Alignment joins on
+\texttt{normalize\_path(path)} and produces aligned rows of the form
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{\{path, image\_id, patient\_id,}
+\NormalTok{ x\_probs   in R\^{}7,    \% in [0,1]}
+\NormalTok{ x\_logits  in R\^{}7,    \% safe\_logit(x\_probs), eps 1e{-}6}
+\NormalTok{ y\_true    in \{0,1\}\^{}7,}
+\NormalTok{ y\_mask    in \{0,1\}\^{}7\}}
+\end{Highlighting}
+\end{Shaded}
+
+This \texttt{(x\_logits,\ x\_probs,\ y\_true,\ y\_mask)} quadruple is
+the only thing the four downstream adapters see during training; the VLM
+is never re-invoked at adapter-train time.
+
+\subsubsection{3.4 Splits}\label{splits}
+
+Two split protocols co-exist in the repo, sharing the same row schema
+and the same \texttt{patient\_id} grouping (no patient overlap across
+splits).
+
+\textbf{(a) 3-way \texttt{default}
+(\texttt{scripts/03\_make\_multilabel\_splits.py})}: 70 / 15 / 15
+patient-level shuffle, seed 42. Used for all \texttt{protocol=default}
+numbers.
+
+\textbf{(b) 4-way \texttt{calibrated4way}
+(\texttt{scripts/03\_make\_multilabel\_splits\_4way.py})}: 70 / 10 / 10
+/ 10 patient-level shuffle, seed 42 →
+\texttt{train\_fit\ /\ calib\ /\ val\ /\ test}. The \texttt{calib} split
+exists \emph{only} to host per-class threshold tuning; \texttt{val} and
+\texttt{test} are entirely unseen by the threshold optimizer.
+
+Multi-label intermediates produced by these scripts carry on the order
+of \textbf{44k train} rows under the patient-grouped regimes used here
+(exact counts drift slightly with \texttt{02\_align\_vlm\_outputs.py}
+parity); registry runs report \textbf{43\,778 train / 9\,357 val /
+9\,197 test} for \texttt{protocol=default} and analogous 4-way sizes for
+\texttt{calibrated4way} (see \texttt{metrics.json}
+\texttt{dataset\_sizes} under each run).
+
+\subsubsection{\texorpdfstring{3.5 Co-error label graph
+(\texttt{scripts/04\_build\_coerror\_graph.py})}{3.5 Co-error label graph (scripts/04\_build\_coerror\_graph.py)}}\label{co-error-label-graph-scripts04_build_coerror_graph.py}
+
+For every training row with at least one positive label, we form
+
+\[\text{present}(r)=\{i:y_i=1\wedge m_i=1\},\qquad
+\text{absent}(r)=\{j:y_j=0\wedge m_j=1\},\]
+
+and accumulate
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{M[i, j] += 1   for i in present sorted ASC by VLM prob (top\_k=3)}
+\NormalTok{                for j in absent  sorted DESC by VLM prob (top\_k=3), j != i}
+\end{Highlighting}
+\end{Shaded}
+
+i.e.~an edge \texttt{i\ →\ j} is added whenever the VLM \textbf{missed}
+a true positive \texttt{i} while \textbf{hallucinating} a likely false
+positive \texttt{j}. Rows of \texttt{M} are L1-normalized to give
+\texttt{W}, then sparsified per-source to the top-\texttt{k=3} targets
+with weight \texttt{≥\ τ=0.02}. The resulting
+\texttt{(edge\_index,\ edge\_weight)} defines an asymmetric directed
+graph stored in
+\texttt{data/processed/graph/\{edge\_index,edge\_weight\}.json}. The
+same graph is reused, identically, by \texttt{gnn07} and \texttt{gnn12}.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsection{4. Methodology}\label{methodology}
+
+\subsubsection{4.1 Problem and notation}\label{problem-and-notation}
+
+For a single image with VLM outputs \(z=\text{logits}\in\mathbb{R}^C\),
+\(p=\sigma(z)\in[0,1]^C\), label vector \(y\in\{0,1\}^C\) and mask
+\(m\in\{0,1\}^C\), each adapter outputs \textbf{calibrated logits}
+\(\hat z\in\mathbb{R}^C\) and is trained with masked, class-weighted
+BCE:
+
+\[\mathcal{L}(\hat z, y, m)=\frac{\sum_{i=1}^{C} m_i \cdot \mathrm{BCEWithLogits}(\hat z_i, y_i;\,w^+_i)}{\sum_{i=1}^{C} m_i + \varepsilon},
+\qquad
+w^+_i=\min\!\Bigl(\tfrac{N^-_i}{\max(N^+_i,1)},\,100\Bigr).\]
+
+\(N^+_i, N^-_i\) are training positive/negative counts on the (masked)
+train split; \(w^+\) is the \texttt{pos\_weight} used by
+\texttt{binary\_cross\_entropy\_with\_logits}.
+
+\subsubsection{\texorpdfstring{4.2 M0 --- \texttt{vlm\_zeroshot}
+(\texttt{VLMZeroShot})}{4.2 M0 --- vlm\_zeroshot (VLMZeroShot)}}\label{m0-vlm_zeroshot-vlmzeroshot}
+
+\[\hat z=z,\quad \hat p=\sigma(z)\]
+
+No learnable parameters. Decision rule:
+\(\hat y_i=\mathbf{1}[\hat p_i \ge 0.5]\). Implemented in
+\texttt{scripts/05\_run\_baseline\_frozen\_vlm.py}.
+
+\subsubsection{\texorpdfstring{4.3 M1 --- \texttt{vlm\_mlp}
+(\texttt{VLMFeatureMLP})}{4.3 M1 --- vlm\_mlp (VLMFeatureMLP)}}\label{m1-vlm_mlp-vlmfeaturemlp}
+
+A flat 2-layer MLP over the concatenated logit/prob vector:
+
+\[x=\bigl[\,z_1,p_1,z_2,p_2,\dots,z_C,p_C\,\bigr]\in\mathbb{R}^{2C},
+\qquad
+\hat z=W_2\,\mathrm{Dropout}(\mathrm{ReLU}(W_1 x)),\]
+
+with \(W_1\in\mathbb{R}^{64\times 2C}\),
+\(W_2\in\mathbb{R}^{C\times 64}\), AdamW, \texttt{lr=1e-3},
+\texttt{weight\_decay=1e-4}, 20 epochs, dropout 0.1. Implemented in
+\texttt{scripts/06\_run\_baseline\_mlp.py}. This is the simplest
+baseline that can learn class-specific \emph{bias correction} and
+per-label \emph{temperature}.
+
+\subsubsection{\texorpdfstring{4.4 M2 ---
+\texttt{gnn07\_label\_residual}
+(\texttt{LabelGraphResidualGNN})}{4.4 M2 --- gnn07\_label\_residual (LabelGraphResidualGNN)}}\label{m2-gnn07_label_residual-labelgraphresidualgnn}
+
+\(C\)-node homogeneous graph with row-normalized adjacency
+\(A\in\mathbb{R}^{C\times C}\) (built in \texttt{build\_adj} by adding
+self-loops then row-stochastic normalization). Per-row node features are
+2-d: \(h^{(0)}_i=[z_i,\,p_i]\). The model is a tiny per-node MLP
+followed by a single message-pass and a residual on the original logits:
+
+\[g_i=W_2\,\mathrm{ReLU}(W_1 h^{(0)}_i)\in\mathbb{R},
+\quad
+\Delta = g\,A^\top\in\mathbb{R}^{C},
+\quad
+\hat z=z+\alpha\,\Delta.\]
+
+\texttt{hidden\_dim=32}, \texttt{alpha=0.5}, \texttt{lr=3e-4}, AdamW
+with cosine LR + 2-epoch warmup, gradient clip 1.0, 80 epochs max with
+\texttt{early\_stop\_patience=18} on \texttt{val\_bce}. Implemented in
+\texttt{scripts/07\_train\_gnn\_adapter.py}.
+
+\subsubsection{\texorpdfstring{4.5 M3 ---
+\texttt{gnn12\_clip\_vlm\_homo}
+(\texttt{ClipVlmHomogeneousGNN})}{4.5 M3 --- gnn12\_clip\_vlm\_homo (ClipVlmHomogeneousGNN)}}\label{m3-gnn12_clip_vlm_homo-clipvlmhomogeneousgnn}
+
+Same homogeneous label graph as M2, but each node now also sees a
+projected CLIP image embedding. With
+\(e\in\mathbb{R}^{D_{\text{clip}}}\) the frozen CLIP image embedding
+(\texttt{openai/clip-vit-base-patch32}):
+
+\[\tilde z=\mathrm{ReLU}(W_e e)\in\mathbb{R}^{H},\qquad
+h^{(0)}_i=\mathrm{ReLU}\bigl(W_n[\tilde z;\,z_i;\,p_i]\bigr).\]
+
+Then \(K\) GNN layers with normalized adjacency \(A\) (elements
+\(A_{ij}\)):
+
+\[h^{(k+1)}_i=\mathrm{ReLU}\Bigl(W^{(k)}\sum_{j} A_{ij}\,h^{(k)}_j\Bigr),
+\qquad
+\Delta_i=W_h h^{(K)}_i\in\mathbb{R},
+\qquad
+\hat z_i=z_i+\alpha\,\Delta_i\quad (i=1,\ldots,C).\]
+
+Writing \(\Delta=(\Delta_1,\ldots,\Delta_C)^\top\) yields
+\(\hat z=z+\alpha\,\Delta\in\mathbb{R}^C\) componentwise.
+
+\texttt{hidden\_dim=64}, \texttt{gnn\_layers=2}, \texttt{alpha=0.5},
+\texttt{lr=3e-4}, AdamW + cosine, batch 32, 60 epochs, early-stop 16.
+Implemented in \texttt{scripts/12\_train\_clip\_vlm\_gnn\_adapter.py}.
+CLIP embeddings are precomputed once per split and cached as a single
+\texttt{.pt} (\texttt{-\/-clip\_cache\_pt}).
+
+\subsubsection{\texorpdfstring{4.6 M4 ---
+\texttt{gnn13\_clip\_bipartite}
+(\texttt{ClipBipartiteAttributeGNN})}{4.6 M4 --- gnn13\_clip\_bipartite (ClipBipartiteAttributeGNN)}}\label{m4-gnn13_clip_bipartite-clipbipartiteattributegnn}
+
+A \textbf{bipartite} graph with \(C\) attribute nodes (one per label)
+and one object node (the image). Attribute features are still
+\([z_i, p_i]\); the object feature is a linear projection of CLIP:
+\(o^{(0)}=W_{\text{clip}} e\). Each bipartite layer aggregates a
+weighted-mean message from attributes to the object, projects,
+concatenates with the object state, then updates with a small MLP +
+dropout
+(\texttt{scripts/gnn\_bipartite.py::BipartiteMessagePassingLayer}):
+
+\[\mu=\frac{\sum_i w_i\,W_{\text{am}}\, a_i}{\sum_i w_i+\varepsilon},
+\quad
+\nu=W_{\text{ap}}\,\mu,
+\quad
+o^{(k+1)}=\mathrm{Dropout}\!\bigl(\mathrm{ReLU}\!\bigl(W_u[o^{(k)};\,\nu]\bigr)\bigr).\]
+
+After \(L\) layers (\texttt{hidden\_dims={[}512,256{]}}), a single
+classifier head produces \(C\) logits from the object state, and a
+residual term re-anchors them to the VLM:
+
+\[\hat z=W_{\text{cls}}\,o^{(L)} + \alpha\,z,\qquad \alpha=0.5.\]
+
+The edge weights \(w_i\) come from
+\texttt{build\_bipartite\_edge\_weights(p,\ mode,\ τ)}:
+
+\begin{itemize}
+\tightlist
+\item
+  \texttt{mode=all}: \(w_i=1\) (uniform mean).
+\item
+  \texttt{mode=vlm\_positive}: \(w_i=\mathbf{1}[p_i\ge τ]\), with
+  all-ones fallback if a row has no edges.
+\end{itemize}
+
+\texttt{object\_feature\_dim=512}, dropout 0.2, \texttt{lr=3e-4}, AdamW
++ cosine, batch 32, 60 epochs, early-stop 16. Implemented in
+\texttt{scripts/13\_train\_bipartite\_gnn\_adapter.py}.
+
+\subsubsection{4.7 Why these four shapes}\label{why-these-four-shapes}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 8\tabcolsep) * \real{0.2000}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 8\tabcolsep) * \real{0.2000}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 8\tabcolsep) * \real{0.2000}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 8\tabcolsep) * \real{0.2000}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 8\tabcolsep) * \real{0.2000}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Adapter
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Sees image again?
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Uses label graph?
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Uses CLIP?
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Topology
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\texttt{vlm\_mlp} & no & no & no & dense flat \\
+\texttt{gnn07\_label\_residual} & no & yes (\(A_{C\times C}\)) & no &
+homogeneous \\
+\texttt{gnn12\_clip\_vlm\_homo} & yes & yes (\(A_{C\times C}\)) & yes &
+homogeneous, image-broadcast \\
+\texttt{gnn13\_clip\_bipartite} & yes & implicit via attr→obj & yes &
+bipartite \\
+\end{longtable}
+
+Each row adds \textbf{exactly one} capability over the previous one,
+which lets §6 attribute the lift to a single change at a time.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsection{5. Experimental Setup}\label{experimental-setup}
+
+\subsubsection{5.1 Hardware and software}\label{hardware-and-software}
+
+CUDA-only training. PyTorch 2.x with \texttt{torch.cuda} enforced
+(\texttt{scripts/\{06,07,12,13\}*.py} raise if CUDA is unavailable).
+HuggingFace \texttt{transformers} for CLIP vision encoding. Runs are
+GPU-pinned via \texttt{-\/-gpu\_id}.
+
+\subsubsection{5.2 Training protocols}\label{training-protocols}
+
+Every training script supports the same pair of CLI knobs:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ExtensionTok{{-}{-}protocol}\NormalTok{  \{default }\KeywordTok{|} \ExtensionTok{calibrated4way\}}
+\ExtensionTok{{-}{-}run\_id}    \OperatorTok{\textless{}}\NormalTok{unique tag}\OperatorTok{\textgreater{}}             \CommentTok{\# auto{-}generated if omitted}
+\ExtensionTok{{-}{-}resume\_from} \OperatorTok{\textless{}}\NormalTok{checkpoint.pt}\OperatorTok{\textgreater{}}        \CommentTok{\# warm start}
+\end{Highlighting}
+\end{Shaded}
+
+Outputs are written to
+\texttt{data/processed/experiments/\textless{}model\_id\textgreater{}/\textless{}protocol\textgreater{}/\textless{}run\_id\textgreater{}/},
+with \texttt{runs\_index.json}, \texttt{latest.json}, \texttt{best.json}
+pointers maintained by
+\texttt{scripts/model\_registry.py::update\_run\_registry}.
+
+\subsubsection{5.3 Evaluation protocols}\label{evaluation-protocols}
+
+We always report \textbf{masked macro-F1} (per-class F1 on rows where
+\texttt{mask=1}, then averaged across the 7 classes ---
+\texttt{common\_multilabel.f1\_from\_counts} and
+\texttt{scripts/06,07,12,13} \texttt{masked\_macro\_f1}).
+
+Two thresholding modes are reported side-by-side:
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{\texttt{@0.5}}: \(\hat y_i=\mathbf{1}[\hat p_i\ge 0.5]\) for
+  every class.
+\item
+  \textbf{\texttt{@per\_class\_thr}}: per-class thresholds picked by
+  \texttt{scripts/08\_tune\_thresholds.py} via a grid sweep
+  \texttt{t∈\{0.05,\ 0.10,\ …,\ 0.95\}} that maximises class F1 on a
+  \emph{calibration} prediction set.
+\end{itemize}
+
+The leakage-free \texttt{calibrated4way} protocol is the recommended one
+and is the protocol used to declare the \emph{best} model in this
+report. It enforces:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  tune \texttt{per\_class\_thresholds.json} \textbf{only} on
+  \texttt{calib\_predictions.json},
+\item
+  apply those frozen thresholds to \texttt{val\_predictions.json} and
+  \texttt{test\_predictions.json} via
+  \texttt{scripts/09\_evaluate\_test.py},
+\item
+  compare models on the resulting
+  \texttt{test\_metrics\_calibrated.json}.
+\end{enumerate}
+
+Conceptually this is \textbf{hold-out threshold calibration} analogous
+to reserving part of labeled data purely for deploying a decision
+rule---a standard guard against inflated metrics when optimisation and
+reporting coincide (Varma \& Simon, 2006; Cawley \& Talbot, 2010; full
+entries in Appendix C).
+
+\subsubsection{5.4 Hyperparameters and
+selection}\label{hyperparameters-and-selection}
+
+Best-checkpoint selection is \texttt{-\/-best\_metric\ val\_bce}
+everywhere by default. We deliberately do \textbf{not} select on
+\texttt{val\_macro\_f1@thr} because (a) \texttt{@0.5} macro-F1 is
+degenerate for a miscalibrated VLM and (b) selecting on \texttt{@thr}
+re-introduces a soft form of threshold-tuning leakage. Cosine LR with
+2-epoch linear warmup, \texttt{min\_lr=1e-6}, gradient-norm clip 1.0,
+AdamW with \texttt{weight\_decay=1e-4}, seed 42 throughout.
+
+\subsubsection{5.5 Reproducibility}\label{reproducibility}
+
+End-to-end pipeline:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# One{-}shot (recommended): splits, graphs, dual CLIP caches, all models, calibrated + leaky evaluations, packaged reports.}
+\ExtensionTok{./scripts/reproduce\_all\_results.sh}
+\CommentTok{\# Artifact layout: RUN\_ID=\textless{}tag\textgreater{} appears under data/processed/experiments/\textless{}model\_id\textgreater{}/\textless{}protocol\textgreater{}/\textless{}RUN\_ID\textgreater{}/}
+\end{Highlighting}
+\end{Shaded}
+
+Or step-by-step (must use \textbf{separate} CLIP caches for
+\texttt{default} vs \texttt{calibrated4way} rows so path order matches
+the rows JSON):
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ExtensionTok{python}\NormalTok{ scripts/01\_build\_canonical\_labels.py}
+\ExtensionTok{python}\NormalTok{ scripts/02\_align\_vlm\_outputs.py}
+\ExtensionTok{python}\NormalTok{ scripts/03\_make\_multilabel\_splits.py}
+\ExtensionTok{python}\NormalTok{ scripts/03\_make\_multilabel\_splits\_4way.py}
+\ExtensionTok{python}\NormalTok{ scripts/04\_build\_coerror\_graph.py }\AttributeTok{{-}{-}train\_rows\_json}\NormalTok{ data/processed/splits/train\_rows.json }\AttributeTok{{-}{-}out\_dir}\NormalTok{ data/processed/graph}
+\ExtensionTok{python}\NormalTok{ scripts/04\_build\_coerror\_graph.py }\AttributeTok{{-}{-}train\_rows\_json}\NormalTok{ data/processed/splits\_4way/train\_fit\_rows.json }\AttributeTok{{-}{-}out\_dir}\NormalTok{ data/processed/graph\_4way}
+\ExtensionTok{python}\NormalTok{ scripts/05\_run\_baseline\_frozen\_vlm.py ...}
+\ExtensionTok{python}\NormalTok{ scripts/06\_run\_baseline\_mlp.py ...}
+\ExtensionTok{python}\NormalTok{ scripts/07\_train\_gnn\_adapter.py ...}
+\ExtensionTok{python}\NormalTok{ scripts/12\_train\_clip\_vlm\_gnn\_adapter.py }\AttributeTok{{-}{-}clip\_cache\_pt}\NormalTok{ data/processed/embeddings/clip\_vitb32\_default.pt    }\CommentTok{\# protocol default graph}
+\ExtensionTok{python}\NormalTok{ scripts/12\_train\_clip\_vlm\_gnn\_adapter.py }\AttributeTok{{-}{-}clip\_cache\_pt}\NormalTok{ data/processed/embeddings/clip\_vitb32\_calibrated4way.pt  }\CommentTok{\# 4{-}way split rows}
+\ExtensionTok{python}\NormalTok{ scripts/13\_train\_bipartite\_gnn\_adapter.py }\AttributeTok{{-}{-}clip\_cache\_pt}\NormalTok{ ...  }\CommentTok{\# mirror 12 — default vs 4{-}way cache}
+\ExtensionTok{python}\NormalTok{ scripts/08\_tune\_thresholds.py ...}
+\ExtensionTok{python}\NormalTok{ scripts/09\_evaluate\_test.py ...}
+\ExtensionTok{python}\NormalTok{ scripts/11\_package\_report.py}
+\end{Highlighting}
+\end{Shaded}
+
+Canonical comparison numbers in §6 mirror
+\textbf{\texttt{reports/comparison/overall.json}} produced by
+\textbf{\texttt{python\ scripts/11\_package\_report.py}}, aggregated
+from \textbf{\texttt{best.json}} →
+\texttt{.../\textless{}model\_id\textgreater{}/\textless{}protocol\textgreater{}/repro\_full\_20260503/}
+(tables round to four decimals).
+
+Run inventory:
+\texttt{data/processed/experiments/\textless{}model\_id\textgreater{}/\textless{}protocol\textgreater{}/\{runs\_index,latest,best\}.json}.
+Reports: \texttt{reports/comparison/overall.md},
+\texttt{reports/comparison/overall.json},
+\texttt{reports/gnn\_adapter/report.md}. Legacy checkpoints and
+superseded caches may live under
+\texttt{data/processed/experiments/\_archive\_20260503/} if you archived
+older runs.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsection{6. Results}\label{results}
+
+All numbers below are macro-F1, rounded to 4 decimals; raw 6-decimal
+values are in \texttt{runs\_index.json} and the \texttt{metrics.json} of
+each run directory. The \texttt{default} columns use the 3-way split;
+the \texttt{calibrated4way} column uses the leakage-free 4-way split
+with thresholds tuned on \texttt{calib}.
+
+\subsubsection{6.1 Main comparison}\label{main-comparison}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 12\tabcolsep) * \real{0.1111}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 12\tabcolsep) * \real{0.1481}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 12\tabcolsep) * \real{0.1481}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 12\tabcolsep) * \real{0.1481}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 12\tabcolsep) * \real{0.1481}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 12\tabcolsep) * \real{0.1481}}
+  >{\raggedleft\arraybackslash}p{(\columnwidth - 12\tabcolsep) * \real{0.1481}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Model
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Default Val @0.5
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Default Test @0.5
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Default Val @thr
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Default Test @thr
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Calib4way Val
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+\textbf{Calib4way Test}
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\texttt{vlm\_zeroshot} (frozen VLM) & 0.0473 & 0.0472 & NA & NA & 0.6513
+& \textbf{0.6512}* \\
+\texttt{vlm\_mlp} (MLP adapter) & 0.5208 & 0.5191 & NA & NA & 0.6548 &
+\textbf{0.6544} \\
+\texttt{gnn07\_label\_residual} & 0.0442 & 0.0423 & 0.0442 & 0.0423 &
+0.6513 & \textbf{0.6512} \\
+\texttt{gnn12\_clip\_vlm\_homo} & 0.6095 & 0.6013 & 0.6095 & 0.6013 &
+0.6792 & \textbf{0.6777} \\
+\texttt{gnn13\_clip\_bipartite} & 0.6542 & 0.6371 & 0.6542 & 0.6371 &
+0.6923 & \textbf{0.6889} \\
+\end{longtable}
+
+* \textbf{\texttt{Calib4way}} column: macro-F1 after
+\texttt{08\_tune\_thresholds.py} on \texttt{calib\_predictions.json}
+only, then evaluated on \textbf{val/test} predictions with those frozen
+thresholds (\texttt{test\_metrics\_calibrated.json}). For
+\textbf{\texttt{vlm\_zeroshot}}, predictions are the raw frozen VLM
+probabilities (\texttt{x\_probs}) exported via
+\texttt{scripts/export\_rows\_to\_predictions.py}; this is \textbf{not}
+the same numeric story as \(\hat{y}=\mathbb{1}[p\ge 0.5]\), where
+macro-F1 is \(\approx 0.047\) (near-trivial negatives). Detailed
+\texttt{@0.5} JSON for the auxiliary baseline path is still in
+\texttt{data/processed/experiments/baseline\_frozen\_vlm/metrics.json}.
+
+\textbf{Headline result.} Under the leakage-free calibrated protocol
+(\texttt{reports/comparison/overall.json}),
+\texttt{gnn13\_clip\_bipartite} reaches \textbf{macro-F1 = 0.6889} on
+test (\textbf{+3.4} macro-F1 \textbf{points} vs MLP \textbf{0.6544},
+\textbf{+1.1} vs \texttt{gnn12} \textbf{0.6777}). Calibrated zeroshot,
+residual GNN, and \textbf{MLP cluster near 0.6512}, leaving bipartite
+\textbf{+0.0377} calibrated macro-F1 over that reference (\textbf{0.6512
+\(\rightarrow\) 0.6889}). On the \textbf{\texttt{default}} splits,
+masking at \textbf{\(t=0.5\)} leaves frozen zeroshot at
+\(\approx 0.047\) macro-F1, while trained heads move into the
+\(\approx 0.5\text{--}0.65\) \texttt{@0.5} band (same table).
+
+\subsubsection{6.2 The threshold-tuning leakage trap
+(RCA)}\label{the-threshold-tuning-leakage-trap-rca}
+
+Look at \texttt{gnn07\_label\_residual} on the replicated
+\textbf{\texttt{default}} run (\texttt{repro\_full\_20260503}): at fixed
+threshold \(0.5\), masked macro-F1 on \textbf{validation} stays near
+\textbf{0.044} (\texttt{metrics.json}). If thresholds are tuned on
+\textbf{\texttt{val\_predictions.json}} and evaluated \textbf{again on
+validation} (\texttt{…/val\_metrics\_thr\_tuned\_on\_val\_LEAKY.json}),
+macro-F1 on that same split climbs to \(\approx 0.657\) --- an
+\(\approx +0.61\) artefact from re-using the same labelled split both to
+pick thresholds and to report the headline number. Mechanism:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  The residual adapter learns a near-zero-mean correction \(\Delta\) on
+  top of frozen VLM logits whose distribution is roughly
+  \(\mathcal{N}(\mu\!\ll\!0, \sigma)\) for non-\texttt{No\ Finding}
+  classes (Qwen2-VL's soft \emph{negative} bias).
+\item
+  Sigmoid of those logits hugs ≈0.05--0.20 for true positives. At
+  \(t=0.5\) virtually no class fires → recall ≈0 → F1 ≈0.
+\item
+  Threshold sweep \(t\in\{0.05,\dots,0.95\}\) recovers each class's F1
+  by simply picking a low threshold; tuning \emph{and} reporting on the
+  same split optimistically samples the F1-maximising operating point.
+\end{enumerate}
+
+Compare this to the leakage-free 4-way protocol on the same model
+(\texttt{test\_metrics\_calibrated.json}): \textbf{0.6512} on test in
+the replicated registry---that is the leakage-free calibrated score, and
+\textbf{it matches calibrated frozen probabilities} (\textbf{0.6512}) in
+this artifact bundle. The qualitative lesson persists: \(\Delta\) logits
+are saturated at \(t=0.5\), whereas per-threshold optimisation on \(p\)
+restores recall; tuning those thresholds \textbf{on evaluation data}
+exaggerates perceived lift. Always tune thresholds on a disjoint
+\texttt{calib} split reserved for scoring rules alone.
+
+\subsubsection{6.3 Effect of CLIP image features (M2 →
+M3)}\label{effect-of-clip-image-features-m2-m3}
+
+Holding the homogeneous label graph fixed and adding a frozen CLIP
+branch lifts calibrated test F1 from \textbf{0.6512 → 0.6777}
+(\textbf{+2.65} macro-F1; same calibrated reference as
+\textbf{\texttt{gnn07}} / zeroshot in this sweep). CLIP embeddings
+appear \textbf{complementary} to frozen VLM scores on the
+bipartite/co-error heads even when logits are calibrated post hoc.
+
+\subsubsection{6.4 Effect of bipartite topology (M3 →
+M4)}\label{effect-of-bipartite-topology-m3-m4}
+
+Replacing the \(C\times C\) homogeneous graph with \textbf{bipartite
+attribute → object} flow lifts calibrated test macro-F1 from
+\textbf{0.6777 → 0.6889} (\textbf{+1.12} vs \texttt{gnn12} in
+\textbf{\texttt{reports/comparison/overall.json}}). The qualitative
+structural argument---a single imaging ``object'' and many latent
+findings---remains the same (\texttt{scripts/gnn\_bipartite.py}), with
+\textbf{\texttt{mode=all}} default edge weights unless
+\texttt{vlm\_positive} is tuned.
+
+\subsubsection{6.5 Per-protocol
+observations}\label{per-protocol-observations}
+
+\begin{itemize}
+\tightlist
+\item
+  The MLP baseline closes most of the gap to the residual GNN under the
+  calibrated protocol; the structural prior (label graph) does
+  \textbf{not} add measurable value on top of class-bias correction
+  \emph{unless} image features are also re-injected.
+\item
+  \textbf{\texttt{gnn12} / \texttt{gnn13}} gain substantially when
+  thresholds are constrained to \textbf{\texttt{calib}}: compare default
+  split test macro-F1 at reported per-class thresholds (same split as
+  tuning in that column---\textbf{still optimistic}) \textbf{0.6013},
+  versus leakage-free calibrated test \textbf{0.6777 / 0.6889}.
+\item
+  Zeroshot \textbf{@0.5} remains \(\approx 0.047\) macro-F1 (test)---the
+  pathology of uniformly high thresholds against negatively biased
+  logits. With \textbf{honest calibrated} thresholds on frozen
+  probabilities only, zeroshot reaches \(\approx 0.6512\), and the best
+  bipartite head still delivers \(\approx +0.038\) macro-F1 on top;
+  \textbf{trained} adapters achieve usable masked macro-F1 at
+  \textbf{\texttt{@0.5}} on the defaults split (§6.1 first columns).
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsection{7. Ablations and Analysis}\label{ablations-and-analysis}
+
+\subsubsection{\texorpdfstring{7.1 Edge mode in the bipartite GNN
+(\texttt{-\/-edge\_mode\ \{all,\ vlm\_positive\}} ×
+\texttt{-\/-vlm\_tau})}{7.1 Edge mode in the bipartite GNN (-\/-edge\_mode \{all, vlm\_positive\} × -\/-vlm\_tau)}}\label{edge-mode-in-the-bipartite-gnn---edge_mode-all-vlm_positive---vlm_tau}
+
+\texttt{vlm\_positive} masks out attributes whose VLM probability is
+below \texttt{vlm\_tau}, with an all-ones fallback for empty rows. In
+our runs \texttt{mode=all} was used as the default;
+\texttt{mode=vlm\_positive} adds a per-row sparsification that is most
+useful when the VLM is well-calibrated for \emph{some} classes
+(\texttt{No\ Finding}, \texttt{Cardiomegaly}) and noisy for others
+(\texttt{Pneumonia}). It is exposed in
+\texttt{scripts/13\_train\_bipartite\_gnn\_adapter.py} for
+dataset-specific tuning.
+
+\subsubsection{7.2 Number of bipartite
+layers}\label{number-of-bipartite-layers}
+
+\texttt{-\/-gnn\_hidden\_dims\ 512,256} (i.e., \(L=2\)) is the default.
+The first layer encodes high-frequency attribute → object updates, the
+second consolidates them. Going deeper (e.g., \texttt{512,256,128}) does
+not help because the bipartite graph has diameter 2 and additional
+layers only re-mix the same object state.
+
+\subsubsection{\texorpdfstring{7.3 Co-error graph \texttt{top\_k} and
+\texttt{τ}}{7.3 Co-error graph top\_k and τ}}\label{co-error-graph-top_k-and-ux3c4}
+
+\texttt{top\_k=3,\ τ=0.02} was used as the default. Lower \texttt{τ}
+introduces noisy edges (rare co-errors); higher \texttt{top\_k}
+densifies the graph and effectively averages neighbours, which hurts the
+residual GNN's precision on rare classes (\texttt{Pneumonia},
+\texttt{Consolidation}). The \texttt{gnn07} configuration is
+\emph{small}, so over-densifying the graph quickly approaches a global
+mean and erases per-class structure.
+
+\subsubsection{\texorpdfstring{7.4 \texttt{alpha} (residual
+scale)}{7.4 alpha (residual scale)}}\label{alpha-residual-scale}
+
+All three GNNs default to \texttt{alpha=0.5}. Setting \texttt{alpha=0}
+reduces the model to a pure label-graph predictor with no VLM anchor and
+underperforms (\texttt{gnn07} cannot recover from the VLM's negative
+bias without the residual). Setting \texttt{alpha=1.0} makes the adapter
+a strict additive correction and is more stable but slightly less
+accurate than \texttt{0.5} on our splits.
+
+\subsubsection{\texorpdfstring{7.5 Best-checkpoint metric
+(\texttt{-\/-best\_metric})}{7.5 Best-checkpoint metric (-\/-best\_metric)}}\label{best-checkpoint-metric---best_metric}
+
+\texttt{val\_bce} is the default. \texttt{val\_macro\_f1\_05} selects on
+the same metric we report at \texttt{@0.5} and biases the model toward
+overconfident logits. \texttt{val\_macro\_f1\_thr} selects on
+per-class-tuned val F1 and is the strongest in-sample metric, which is
+exactly why we \textbf{do not} use it: it is one threshold-tuning step
+away from the same leakage as §6.2.
+
+\subsubsection{\texorpdfstring{7.6 Class-weighted loss
+(\texttt{pos\_weight\_max=100})}{7.6 Class-weighted loss (pos\_weight\_max=100)}}\label{class-weighted-loss-pos_weight_max100}
+
+The 7 CheXpert classes are extremely imbalanced (\texttt{Pneumonia} ≈
+2\% positive in our train split, \texttt{No\ Finding} ≈ 50\%). Capping
+\texttt{pos\_weight} at 100 prevents a single rare class from dominating
+the gradient. Removing the cap (\texttt{pos\_weight\_max=∞})
+destabilises early training and makes the cosine schedule diverge.
+
+\subsubsection{7.7 The flat-MLP control}\label{the-flat-mlp-control}
+
+The MLP baseline already receives the \emph{full}
+\texttt{{[}logits;\ probs{]}} vector and spans per-class affine-ish
+recalibration. It scores \textbf{0.6544} on calibrated test
+(\textbf{\texttt{reports/comparison/overall.json}}), so calibrated
+macro-F1 gains \textbf{above that line} (\(>0.6544\)) are evidence of
+\emph{cross-class structure} (CLIP + graph) rather than scalar
+recalibration alone.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsection{8. Discussion}\label{discussion}
+
+\subsubsection{8.0 Framing: when to prefer a GNN adapter over VLM
+fine-tuning}\label{framing-when-to-prefer-a-gnn-adapter-over-vlm-fine-tuning}
+
+Use \textbf{adapter-only domain adaptation} (no VLM gradients) when: (i)
+you cannot afford full fine-tuning compute or liability of changing a
+shared foundation model; (ii) you need \textbf{fast iteration} on label
+policies, thresholds, or hospital-specific biases; (iii) you already
+have \textbf{offline VLM scores} and want a reproducible head. Prefer a
+\textbf{GNN head} over a flat MLP when you believe \textbf{label
+structure} (co-occurrence, co-error, or image--attribute factorization)
+should be \textbf{baked in} rather than re-learned from limited
+data---and when you can supply a graph prior (co-error from train) or a
+bipartite template (attribute→object). Prefer \textbf{full VLM
+fine-tuning} when the domain gap is primarily \textbf{visual} (e.g.,
+completely new modality or resolution) and no auxiliary frozen image
+encoder closes that gap; this repo's best results suggest that
+\textbf{re-injecting CLIP} captures part of that visual gap
+\emph{without} touching the VLM.
+
+\subsubsection{8.1 What actually drives the
+gains}\label{what-actually-drives-the-gains}
+
+In ascending order of contribution to \textbf{0.6889} calibrated
+bipartite macro-F1 \textbf{vs} calibrated frozen probs
+(\(\approx 0.6512\)) and naïve \textbf{@0.5}:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Class-weighted masked BCE plus honest threshold protocol} (vs
+  naïve \texttt{@0.5}): lifts calibrated frozen probabilities from
+  \(0.047 \rightarrow \approx 0.65\) macro-F1 (zeroshot; see §6.1
+  footnote on \texttt{export\_rows\_to\_predictions} +
+  \texttt{calib-only} thresholds) and aligns adapter scores with
+  decision-rule hygiene.
+\item
+  \textbf{CLIP image features re-injected} (M2 → M3 vs the same
+  \(\approx 0.6512\) calibrated reference): \textbf{+2.65} macro-F1 (to
+  \textbf{0.6777}) under \texttt{08/09}.
+\item
+  \textbf{Bipartite attribute → object topology} (M3 → M4): +1.1 F1 by
+  matching the data-generating process.
+\item
+  \textbf{Co-error label graph} (M1 → M2): essentially neutral once
+  calibration is honest. The graph encodes a prior that the adapter can
+  also learn from data given enough capacity.
+\end{enumerate}
+
+\subsubsection{\texorpdfstring{8.2 What does \emph{not} drive
+gains}{8.2 What does not drive gains}}\label{what-does-not-drive-gains}
+
+\begin{itemize}
+\tightlist
+\item
+  The choice of \texttt{gnn07} adjacency normalization does not matter
+  beyond row-stochastic.
+\item
+  Going past 2 bipartite layers does not improve results.
+\item
+  Selecting checkpoints on val-thr macro F1 inflates val numbers without
+  a matching test improvement.
+\end{itemize}
+
+\subsubsection{8.3 Practical
+recommendation}\label{practical-recommendation}
+
+For a production system that must keep the foundation VLM frozen,
+\textbf{\texttt{gnn13\_clip\_bipartite} evaluated under the 4-way
+calibrated protocol} is the recommended configuration (\textbf{0.6889}
+calibrated test macro-F1 in \texttt{reports/comparison/overall.json}).
+If CLIP inference is unacceptable, \textbf{\texttt{vlm\_mlp} under that
+same protocol remains competitive} (\textbf{0.6544}) at lower
+architecture complexity.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsection{9. Limitations}\label{limitations}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Single VLM source.} All non-zeroshot adapters consume
+  Qwen2-VL-2B-Instruct outputs; we have not measured robustness under a
+  different VLM.
+\item
+  \textbf{Single CLIP backbone.} \texttt{openai/clip-vit-base-patch32}
+  is the smallest CLIP and is not pretrained on chest X-rays; a
+  domain-adapted encoder (e.g., BiomedCLIP) would likely lift M3/M4
+  further.
+\item
+  \textbf{Single random seed.} All numbers are seed-42; we have not
+  reported variance across seeds.
+\item
+  \textbf{Patient-grouped but not site-grouped splits.} CheXpert is
+  single-site, so distribution shift is not measured here.
+\item
+  \textbf{Macro-F1 only.} AUROC, balanced accuracy and per-class recall
+  at fixed precision would round out the comparison.
+\item
+  \textbf{Threshold grid is coarse} (\texttt{step=0.05}); a finer grid
+  or differentiable-threshold method (e.g., Fβ-soft) might shave a small
+  additional F1.
+\end{enumerate}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsection{10. Reproducibility Summary}\label{reproducibility-summary}
+
+\begin{itemize}
+\tightlist
+\item
+  Code: \texttt{scripts/01–13}, \texttt{scripts/common\_multilabel.py},
+  \texttt{scripts/model\_registry.py},
+  \texttt{scripts/gnn\_bipartite.py}.
+\item
+  Configs:
+  \texttt{configs/\{data,graph,train\_gnn,train\_clip\_gnn,eval\}.yaml}.
+\item
+  Seeds: 42 throughout (\texttt{set\_seed}).
+\item
+  Splits: \texttt{data/processed/splits/} (3-way) and
+  \texttt{data/processed/splits\_4way/} (4-way).
+\item
+  Graph:
+  \texttt{data/processed/graph/\{edge\_index,edge\_weight\}.json}.
+\item
+  CLIP caches:
+  \texttt{data/processed/embeddings/clip\_vitb32\_default.pt} and
+  \texttt{clip\_vitb32\_calibrated4way.pt} (one per split regime;
+  \textbf{never} mix row sets in a single cache file).
+\item
+  Run registry:
+  \texttt{data/processed/experiments/\textless{}model\_id\textgreater{}/\textless{}protocol\textgreater{}/\{runs\_index,latest,best\}.json}.
+\item
+  Reports: \texttt{reports/gnn\_adapter/report.md},
+  \texttt{reports/comparison/overall.\{md,json\}}.
+\item
+  Inference UI: \texttt{gradio\_inference.py} (resolves
+  \texttt{best.json} under
+  \texttt{.../\textless{}model\_id\textgreater{}/\textless{}default\textbar{}calibrated4way\textgreater{}/};
+  optional legacy weights may live in \texttt{.../\_archive\_20260503/}
+  after cleanup).
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsection{11. Conclusion}\label{conclusion}
+
+We argue that \textbf{GNN-based adapters remain a practical recipe for
+domain adaptation in multi-label CXR classification without fine-tuning
+the VLM}: the foundation model supplies fixed \((z,p)\) scores (CLIP
+optional), while a lightweight head learns \textbf{structured,
+label-aware corrections}. On the replicated registry bundle
+(\textbf{\texttt{RUN\_ID=repro\_full\_20260503}},
+\texttt{reports/comparison/overall.json}), bipartite
+\textbf{\texttt{gnn13\_clip\_bipartite}} attains \textbf{0.6889}
+calibrated test macro-F1---\textbf{≈ +3.4} over calibrated
+\textbf{\texttt{vlm\_mlp} (0.6544)} and \textbf{≈ +3.8} over calibrated
+frozen probabilities alone (\textbf{\(0.6512\)}), while
+\textbf{\(t{=}0.5\)} keeps masked macro-F1 near \textbf{0.05} on
+zeroshot without threshold optimisation. Threshold tuning \textbf{on
+evaluation data} still inflates \textbf{validation} residuals by
+\(\approx +0.61\) macro-F1 (see \texttt{*\_LEAKY.json} / §6.2);
+reserving \textbf{\texttt{calib}} removes that ambiguity. Jointly these
+facts support \textbf{``freeze VLM, adapt with graphs (and calibrated
+decisions)''} whenever full encoder fine-tuning is prohibitive.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsection{Appendix A --- Script-to-Artifact
+Map}\label{appendix-a-script-to-artifact-map}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Stage
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Script
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Primary artifacts
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Canonical labels & \texttt{01\_build\_canonical\_labels.py} &
+\texttt{data/processed/multilabel/canonical\_labels.json} \\
+VLM alignment & \texttt{02\_align\_vlm\_outputs.py} &
+\texttt{data/processed/multilabel/aligned\_vlm\_targets.json} \\
+3-way splits & \texttt{03\_make\_multilabel\_splits.py} &
+\texttt{data/processed/splits/\{train,val,test\}\_rows.json} \\
+4-way splits & \texttt{03\_make\_multilabel\_splits\_4way.py} &
+\texttt{data/processed/splits\_4way/\{train\_fit,calib,val,test\}\_rows.json} \\
+Co-error graph & \texttt{04\_build\_coerror\_graph.py} &
+\texttt{data/processed/graph/} (defaults) plus
+\texttt{data/processed/graph\_4way/} (4-way splits) \\
+Frozen VLM eval & \texttt{05\_run\_baseline\_frozen\_vlm.py} &
+\texttt{.../baseline\_frozen\_vlm/metrics.json} \\
+MLP baseline & \texttt{06\_run\_baseline\_mlp.py} &
+\texttt{.../vlm\_mlp/\textless{}protocol\textgreater{}/\textless{}run\_id\textgreater{}/\{metrics,val,test,calib\}\_*.json} \\
+Residual GNN & \texttt{07\_train\_gnn\_adapter.py} &
+\texttt{.../gnn07\_label\_residual/\textless{}protocol\textgreater{}/\textless{}run\_id\textgreater{}/...} \\
+Threshold tuning & \texttt{08\_tune\_thresholds.py} &
+\texttt{.../\textless{}protocol\textgreater{}/\textless{}run\_id\textgreater{}/per\_class\_thresholds.json}
+(calib-fed) or \texttt{*\_tuned\_on\_val\_LEAKY.json} \\
+Evaluation & \texttt{09\_evaluate\_test.py} &
+\texttt{.../\textless{}run\_id\textgreater{}/test\_metrics\_calibrated.json}
+(honest) or \texttt{*\_LEAKY.json} (diagnostic) \\
+Ablation collation & \texttt{10\_run\_ablations.py} &
+\texttt{data/processed/experiments/ablations/ablation\_table.csv}
+(writes new dir if missing) \\
+Markdown report & \texttt{11\_package\_report.py} &
+\texttt{reports/\{gnn\_adapter/report.md,\ comparison/overall.\{md,json\}\}} \\
+CLIP+VLM GNN & \texttt{12\_train\_clip\_vlm\_gnn\_adapter.py} &
+\texttt{.../gnn12\_clip\_vlm\_homo/\textless{}protocol\textgreater{}/\textless{}run\_id\textgreater{}/...} \\
+Bipartite GNN & \texttt{13\_train\_bipartite\_gnn\_adapter.py} &
+\texttt{.../gnn13\_clip\_bipartite/\textless{}protocol\textgreater{}/\textless{}run\_id\textgreater{}/...} \\
+\end{longtable}
+
+\subsection{Appendix B --- Default
+Hyperparameters}\label{appendix-b-default-hyperparameters}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 18\tabcolsep) * \real{0.1000}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 18\tabcolsep) * \real{0.1000}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 18\tabcolsep) * \real{0.1000}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 18\tabcolsep) * \real{0.1000}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 18\tabcolsep) * \real{0.1000}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 18\tabcolsep) * \real{0.1000}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 18\tabcolsep) * \real{0.1000}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 18\tabcolsep) * \real{0.1000}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 18\tabcolsep) * \real{0.1000}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 18\tabcolsep) * \real{0.1000}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Model
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Hidden
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Layers
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+LR
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Sched
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Epochs
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Batch
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Dropout
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+α
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Other
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\texttt{vlm\_mlp} & 64 & 2 & 1e-3 & none & 20 & full & 0.1 & --- &
+AdamW, wd 1e-4, pos\_weight≤100 \\
+\texttt{gnn07\_label\_residual} & 32 & 1 msg-pass & 3e-4 & cosine +
+warmup 2 & ≤80 (es 18) & full & 0 & 0.5 & grad\_clip 1.0, val\_bce
+checkpoint \\
+\texttt{gnn12\_clip\_vlm\_homo} & 64 & K=2 GNN & 3e-4 & cosine + warmup
+2 & ≤60 (es 16) & 32 & 0 & 0.5 & CLIP B/32 frozen, cached embeddings \\
+\texttt{gnn13\_clip\_bipartite} & {[}512, 256{]} & L=2 bipartite & 3e-4
+& cosine + warmup 2 & ≤60 (es 16) & 32 & 0.2 & 0.5 & object\_dim 512,
+edge\_mode=all \\
+\end{longtable}
+
+\subsection{Appendix C --- References}\label{appendix-c-references}
+
+Grouped by topic for quick lookup; alphabetical within each topic.
+
+\subsubsection{C.1 Dataset \& task}\label{c.1-dataset-task}
+
+\begin{itemize}
+\tightlist
+\item
+  Irvin J., Rajpurkar P., Koh M., Yu Y., Cicurel S., Chute C., \ldots{}
+  Ng A. Y. (2019). \emph{CheXpert: A Large Chest Radiograph Dataset with
+  Uncertainty Labels and Expert Comparison}. Proceedings of AAAI
+  Conference on Artificial Intelligence (AAAI).
+\end{itemize}
+
+\subsubsection{C.2 Vision--language foundation models \&
+parameter-efficient
+tuning}\label{c.2-visionlanguage-foundation-models-parameter-efficient-tuning}
+
+\begin{itemize}
+\item
+  Radford A., Kim J. W., Hallacy C., Ramesh A., Goh G., Agarwal S.,
+  \ldots{} Sutskever I. (2021). \emph{Learning Transferable Visual
+  Models From Natural Language Supervision}. Proceedings of ICML.
+\item
+  Wang P., Bai S., Tan S., Wang S., Fan Z., Bai J., \ldots{} Zhou J.
+  (\emph{Qwen team}) (2024). \emph{Qwen2-VL: Enhancing Vision-Language
+  Model's Perception of the World at Any Resolution}. arXiv:2409.12191
+  \url{https://arxiv.org/abs/2409.12191}.
+\item
+  Hu E. J., Shen Y., Wallis P., Allen-Zhu Z., Li Y., Wang S., Wang L.,
+  Chen W. (2022). \emph{LoRA: Low-Rank Adaptation of Large Language
+  Models}. Proceedings of ICLR.
+\item
+  Houlsby N., Giurgiu A., Jastrzebski S., Morrison Q., Larochelle H.,
+  Gesmundo M., Attariyan H., Gelly S. (2019). \emph{Parameter-Efficient
+  Transfer Learning with NLP Adapter Modules}. Proceedings of ICML.
+\end{itemize}
+
+\subsubsection{C.3 Graph neural networks --- homogeneous convolution \&
+message
+passing}\label{c.3-graph-neural-networks-homogeneous-convolution-message-passing}
+
+\begin{itemize}
+\item
+  Kipf T. N., Welling M. (2017). \emph{Semi-Supervised Classification
+  with Graph Convolutional Networks}. ICLR poster.
+\item
+  Hamilton W., Ying Z., Leskovec J. (2017). \emph{Inductive
+  Representation Learning on Large Graphs}. NeurIPS.
+\item
+  Veličković P., Cucurull G., Casanova A., Romero A., Liò P., Bengio Y.
+  (2018). \emph{Graph Attention Networks}. ICLR.
+\item
+  Gilmer J., Schoenholz S. S., Riley P., Vinyals O., Dahl G. E. (2017).
+  \emph{Neural Message Passing for Quantum Chemistry}. ICML. (Defines a
+  general pairwise message/update framework that subsumes many bipartite
+  and heterogeneous aggregations.)
+\end{itemize}
+
+\subsubsection{C.4 Heterogeneous, relational \& bipartite-style
+graphs}\label{c.4-heterogeneous-relational-bipartite-style-graphs}
+
+\begin{itemize}
+\item
+  Schlichtkrull M., Kipf T. N., Bloem P., van den Berg R., Titov I.,
+  Welling M. (2018). \emph{Modeling Relational Data with Graph
+  Convolutional Networks}. European Semantic Web Conference (ESWC).
+  \url{https://doi.org/10.1007/978-3-319-93417-4_38}
+\item
+  Wang X., Ji H., Shi C., Wang B., Ye Y., Cui P., Yu P. S. (2019).
+  \emph{Heterogeneous Graph Attention Network}. The Web Conference
+  (WWW). \url{https://doi.org/10.1145/3308558.3313562}
+\end{itemize}
+
+\subsubsection{C.5 Multi-label image recognition via label
+graphs}\label{c.5-multi-label-image-recognition-via-label-graphs}
+
+\begin{itemize}
+\tightlist
+\item
+  Chen Z.-M., Wei X.-S., Wang P., Guo Y. (2019). \emph{Multi-Label Image
+  Recognition with Graph Convolutional Networks}. Proceedings of
+  IEEE/CVF CVPR.
+\end{itemize}
+
+\subsubsection{C.6 Threshold choice, probabilistic calibration \&
+``leakproof'' evaluation
+protocol}\label{c.6-threshold-choice-probabilistic-calibration-leakproof-evaluation-protocol}
+
+Choosing per-class thresholds and reporting accuracy/F1 mixes
+\textbf{classification calibration} with \textbf{selection bias}
+whenever the same labeled split is reused for tuning and leaderboard
+reporting.
+
+\begin{itemize}
+\item
+  Lipton Z. C., Elkan C., Narayanaswamy B. (2014). \emph{Optimal
+  Thresholding of Classifiers to Maximize F1 Measure}. In
+  \emph{Proceedings of ECML PKDD 2014} (Springer LNCS vol.~8726),
+  pp.~225--239. \url{https://doi.org/10.1007/978-3-662-44851-9_15}
+  (related preprint: \emph{Thresholding Classifiers to Maximize F1
+  Score}, arXiv:1402.1892.)
+\item
+  Lewis D. D. (1995). \emph{Evaluating and optimizing autonomous text
+  classification systems}. ACM SIGIR. (Classic framing of
+  precision/recall trade-offs via thresholds.)
+\item
+  Platt J. C. (1999). \emph{Probabilistic outputs for Support Vector
+  Machines and comparisons to regularized likelihood methods}. In
+  \emph{Advances in Large Margin Classifiers} (MIT Press). (Platt /
+  temperature-style scaling lineage.)
+\item
+  Niculescu-Mizil A., Caruana R. (2005). \emph{Predicting Good
+  Probabilities with Supervised Learning}. ICML.
+\item
+  Guo C., Pleiss G., Sun Y., Weinberger K. Q. (2017). \emph{On
+  Calibration of Modern Neural Networks}. Proceedings of ICML.
+\item
+  Varma S., Simon R. (2006). \emph{Bias in Error Estimation When Using
+  Cross-Validation for Model Selection}. BMC Bioinformatics, 7(1), 91.
+  \url{https://doi.org/10.1186/1471-2105-7-91}
+\item
+  Cawley G. C., Talbot N. L. C. (2010). \emph{On Over-fitting in Model
+  Selection and Subsequent Selection Bias in Performance Evaluation}.
+  Journal of Machine Learning Research (JMLR), 11, 2079--2107.
+  \url{http://jmlr.org/papers/v11/cawley10a.html}
+\item
+  Dietterich T. G. (1998). \emph{Approximate Statistical Tests for
+  Comparing Supervised Classification Learning Algorithms}. Neural
+  Computation, 10(7), 1895--1923. (Multiple runs / paired tests when
+  comparing adapters.)
+\end{itemize}
+
+Together, Varma \& Simon (2006) and Cawley \& Talbot (2010) underpin the
+methodological point that \textbf{any post hoc rule fit on labeled
+data---including per-class thresholds---must consume a disjoint
+hold-out} if the same numerical split is otherwise used for model
+comparison; our \textbf{\texttt{calib}} split instantiates exactly that
+separation from \texttt{train\_fit}, \texttt{val}, and \texttt{test}.
+
+\end{document}
