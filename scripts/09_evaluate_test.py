@@ -43,7 +43,10 @@ def eval_with_thresholds(data, thresholds):
 
 def main():
     parser = argparse.ArgumentParser(description="Evaluate test predictions with frozen per-class thresholds.")
-    parser.add_argument("--test_predictions_json", default="data/processed/experiments/gnn_adapter/test_predictions.json")
+    parser.add_argument(
+        "--test_predictions_json",
+        default="data/processed/experiments/gnn07_label_residual/default/repro_full_20260503/test_predictions.json",
+    )
     parser.add_argument("--thresholds_json", default="data/processed/experiments/thresholds/per_class_thresholds.json")
     parser.add_argument("--out_json", default="data/processed/experiments/final_eval/test_metrics.json")
     args = parser.parse_args()

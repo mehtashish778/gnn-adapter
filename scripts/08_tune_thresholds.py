@@ -23,7 +23,10 @@ def class_f1(y_true, y_mask, probs, t, idx):
 
 def main():
     parser = argparse.ArgumentParser(description="Tune per-class thresholds on validation predictions.")
-    parser.add_argument("--val_predictions_json", default="data/processed/experiments/gnn_adapter/val_predictions.json")
+    parser.add_argument(
+        "--val_predictions_json",
+        default="data/processed/experiments/gnn07_label_residual/default/repro_full_20260503/val_predictions.json",
+    )
     parser.add_argument("--out_json", default="data/processed/experiments/thresholds/per_class_thresholds.json")
     args = parser.parse_args()
 

@@ -14,8 +14,14 @@ def main():
     rows = []
     metric_files = [
         ("baseline_frozen_vlm", Path("data/processed/experiments/baseline_frozen_vlm/metrics.json")),
-        ("baseline_mlp", Path("data/processed/experiments/baseline_mlp/metrics.json")),
-        ("gnn_adapter", Path("data/processed/experiments/gnn_adapter/metrics.json")),
+        (
+            "baseline_mlp",
+            Path("data/processed/experiments/vlm_mlp/default/repro_full_20260503/metrics.json"),
+        ),
+        (
+            "gnn_adapter",
+            Path("data/processed/experiments/gnn07_label_residual/default/repro_full_20260503/metrics.json"),
+        ),
         ("final_eval", Path("data/processed/experiments/final_eval/test_metrics.json")),
     ]
     for name, p in metric_files:

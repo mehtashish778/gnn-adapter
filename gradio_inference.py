@@ -114,11 +114,12 @@ def resolve_thresholds_path(model_id: str) -> Optional[Path]:
         p = run_dir / "per_class_thresholds.json"
         if p.exists():
             return p
-    legacy_map = {
-        "vlm_mlp": [Path("data/processed/experiments/mlp_calibrated/per_class_thresholds.json")],
-        "gnn07_label_residual": [Path("data/processed/experiments/gnn_calibrated/per_class_thresholds.json")],
-        "gnn12_clip_vlm_homo": [Path("data/processed/experiments/clip_vlm_gnn_calibrated4way/per_class_thresholds.json")],
-        "gnn13_clip_bipartite": [Path("data/processed/experiments/bipartite_clip_gnn_calibrated4way/per_class_thresholds.json")],
+    # Optional extra fallbacks if calibrated4way run dir is missing thresholds.
+    legacy_map: dict[str, list[Path]] = {
+        "vlm_mlp": [],
+        "gnn07_label_residual": [],
+        "gnn12_clip_vlm_homo": [],
+        "gnn13_clip_bipartite": [],
     }
     legacy = legacy_map.get(model_id, []) + [Path("data/processed/experiments/thresholds/per_class_thresholds.json")]
     for p in legacy:
@@ -206,26 +207,42 @@ class InferenceEngine:
             "vlm_mlp",
             "default",
             legacy_candidates=[
-                Path("data/processed/experiments/baseline_mlp/best_checkpoint.pt"),
-                Path("data/processed/experiments/multilabel_adapter/mlp_residual_best.pt"),
+                Path(
+                    "data/processed/experiments/_archive_20260503/baseline_mlp/best_checkpoint.pt"
+                ),
+                Path(
+                    "data/processed/experiments/_archive_20260503/multilabel_adapter/mlp_residual_best.pt"
+                ),
             ],
         )
         self.gnn_ckpt_path = resolve_checkpoint(
             "gnn07_label_residual",
             "default",
             legacy_candidates=[
-                Path("data/processed/experiments/gnn_adapter/best_checkpoint.pt"),
+                Path(
+                    "data/processed/experiments/_archive_20260503/gnn_adapter/best_checkpoint.pt"
+                ),
             ],
         )
         self.gnn12_ckpt_path = resolve_checkpoint(
             "gnn12_clip_vlm_homo",
             "default",
-            legacy_candidates=[Path("data/processed/experiments/clip_vlm_gnn_adapter/best_checkpoint.pt")],
+            legacy_candidates=[
+                Path(
+                    "data/processed/experiments/_archive_20260503/"
+                    "clip_vlm_gnn_adapter/best_checkpoint.pt"
+                )
+            ],
         )
         self.gnn13_ckpt_path = resolve_checkpoint(
             "gnn13_clip_bipartite",
             "default",
-            legacy_candidates=[Path("data/processed/experiments/bipartite_clip_gnn_adapter/best_checkpoint.pt")],
+            legacy_candidates=[
+                Path(
+                    "data/processed/experiments/_archive_20260503/"
+                    "bipartite_clip_gnn_adapter/best_checkpoint.pt"
+                )
+            ],
         )
 
         self.processor = AutoProcessor.from_pretrained(self.model_dir, local_files_only=True)

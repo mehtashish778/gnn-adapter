@@ -34,7 +34,6 @@ This is **stricter** than macro F1 (which averages per-label F1).
   - `.../latest.json`
   - `.../best.json`
 - Legacy paths are still read by report scripts for backward compatibility.
-- **Paper-snapshot MLP @0.5:** `data/processed/experiments/baseline_mlp/metrics.json` (from `--eval_only` on the archived checkpoint; includes `checkpoint_loaded` and aligns with §6.1 Default @0.5 for `vlm_mlp` in `docs/academic_report.md`).
 
 ## Thresholding Modes
 
