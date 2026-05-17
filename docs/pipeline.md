@@ -11,7 +11,8 @@ This document maps each script to its inputs/outputs so you can debug or rerun s
 - `gnn07_label_residual` -> `LabelGraphResidualGNN`
 - `gnn12_clip_vlm_homo` -> `ClipVlmHomogeneousGNN`
 - `gnn13_clip_bipartite` -> `ClipBipartiteAttributeGNN`
-- `cca` -> `CCAModel` (Compositional Concept Adapter)
+- `cca` -> `CCAModel` (Concept-Evidence Adapter / CCA)
+- `cbm_posthoc`, `cbm_labelfree`, `qformer_adapter`, `mlgcn` -> Phase 4 baselines
 
 Organized output path:
 - `data/processed/experiments/<model_id>/<protocol>/<run_id>/...`
@@ -102,10 +103,12 @@ Output directory:
 ### One-shot run for all variants
 Script: `scripts/run_all_gnn_variants.sh`
 
-### Compositional Concept Adapter (CCA)
+### Concept-Evidence Adapter (CCA)
 Script: `scripts/14_train_cca.py` (core: `scripts/cca_train_core.py`)  
 Config reference: `configs/train_cca.yaml`  
-Optuna HPO: `scripts/tune_cca_optuna.py` — full write-up in **`docs/cca_optuna_hpo.md`**
+Optuna HPO: `scripts/tune_cca_optuna.py` — full write-up in **`docs/cca_optuna_hpo.md`**  
+Faithfulness metrics: `scripts/faithfulness_metrics.py`  
+Concept priors: `scripts/build_concept_prior.py`, `scripts/permute_prior.py`, ablation driver `scripts/run_prior_ablation.py`
 
 Outputs:
 - `data/processed/experiments/cca/<protocol>/<run_id>/best_checkpoint.pt`
@@ -116,6 +119,18 @@ Documented runs (default protocol):
 - `run_20260516_183647` — default hparams (test F1 @0.5 ≈ 0.653)
 - `best_optuna_cca_hpo` — Optuna trial-27 hparams, 60-epoch final (test F1 @0.5 ≈ 0.658)
 - `data/processed/experiments/cca/optuna/best_trial.json` — best tuning trial (val F1 @0.5 ≈ 0.701)
+
+### Phase 4 baselines (same patch cache as CCA)
+| Script | model_id |
+|--------|----------|
+| `scripts/15_train_posthoc_cbm.py` | `cbm_posthoc` |
+| `scripts/16_train_labelfree_cbm.py` | `cbm_labelfree` |
+| `scripts/17_train_qformer_adapter.py` | `qformer_adapter` |
+| `scripts/18_train_mlgcn.py` | `mlgcn` |
+| `scripts/19_train_lora_clip_vision.py` | LoRA vision cache (`peft`) |
+| `scripts/20_holdout_concept.py` | held-out primitive ablation eval |
+
+Multi-seed stats: `scripts/run_seeds.py --use_numbered_script --stats_after` → `scripts/stats_compare.py`
 
 ## 7) Thresholds, Evaluation, and Reporting
 

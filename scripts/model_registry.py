@@ -44,7 +44,27 @@ MODEL_SPECS: Dict[str, ModelSpec] = {
     "cca": ModelSpec(
         model_id="cca",
         display_name="CompositionalConceptAdapter",
-        description="3-layer CCA: patch cross-attention → self-attn compositional → VLM-gated findings readout.",
+        description="Concept-evidence adapter: patch cross-attention → compositional self-attn → gated findings readout.",
+    ),
+    "cbm_posthoc": ModelSpec(
+        model_id="cbm_posthoc",
+        display_name="PostHocCBM",
+        description="Post-hoc concept bottleneck on VLM [logits; probs].",
+    ),
+    "cbm_labelfree": ModelSpec(
+        model_id="cbm_labelfree",
+        display_name="LabelFreeCBM",
+        description="Label-free CBM with CLIP concept similarities.",
+    ),
+    "qformer_adapter": ModelSpec(
+        model_id="qformer_adapter",
+        display_name="QFormerAdapter",
+        description="Learnable query cross-attention over ViT patches.",
+    ),
+    "mlgcn": ModelSpec(
+        model_id="mlgcn",
+        display_name="MLGCN",
+        description="ML-GCN style label-graph message passing.",
     ),
 }
 

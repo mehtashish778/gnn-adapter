@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Train Compositional Concept Adapter (CCA): frozen ViT patch tokens + frozen VLM (z, p).
+Train Concept-Evidence Adapter (CCA): frozen ViT patch tokens + frozen VLM (z, p).
 
 Layer 1: concept queries cross-attend over patch tokens.
 Layer 2: self-attention compositional reasoning (optional RadGraph bias).
@@ -47,6 +47,13 @@ from common_multilabel import (
 )
 from feature_cache import FeatureCache, PATCH_CACHE_VERSION, atomic_torch_save, clip_cache_dataset_id
 from model_registry import resolve_experiment_dir, update_run_registry
+from faithfulness_metrics import (
+    gate_density,
+    intervention_consistency,
+    intervention_faithfulness_loss,
+    necessity_sufficiency_scores,
+    sparsity_target_loss,
+)
 from models.architectures.cca import CCAModel, DEFAULT_CONCEPT_PHRASES
 
 
@@ -260,7 +267,7 @@ class CCADataBundle:
 
 
 def build_argparser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Train Compositional Concept Adapter (CCA).")
+    parser = argparse.ArgumentParser(description="Train Concept-Evidence Adapter (CCA).")
     parser.add_argument("--train_rows_json", default="data/processed/splits/train_rows.json")
     parser.add_argument("--val_rows_json", default="data/processed/splits/val_rows.json")
     parser.add_argument("--test_rows_json", default="data/processed/splits/test_rows.json")
@@ -284,6 +291,13 @@ def build_argparser() -> argparse.ArgumentParser:
     parser.add_argument("--dropout", type=float, default=0.1)
     parser.add_argument("--init_queries_from_text", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--use_gate_M", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--lambda_sparse", type=float, default=0.0, help="Weight on sparsity target loss for gate M.")
+    parser.add_argument("--lambda_faithful", type=float, default=0.0, help="Weight on intervention faithfulness loss.")
+    parser.add_argument("--sparsity_target", type=float, default=0.10, help="Target gate density (5-15% band center).")
+    parser.add_argument("--gumbel_tau_init", type=float, default=1.0)
+    parser.add_argument("--gumbel_tau_min", type=float, default=0.5)
+    parser.add_argument("--gumbel_anneal_epochs", type=int, default=10)
+    parser.add_argument("--intervention_per_step", type=int, default=1, help="Interventions per batch (0=off).")
     parser.add_argument("--radgraph_prior_json", default="")
     parser.add_argument("--epochs", type=int, default=60)
     parser.add_argument("--batch_size", type=int, default=16)
@@ -308,6 +322,12 @@ def build_argparser() -> argparse.ArgumentParser:
     parser.add_argument("--resume_from", default="")
     parser.add_argument("--gpu_id", type=int, default=0)
     return parser
+
+
+def gumbel_tau_at_epoch(args: argparse.Namespace, epoch: int) -> float:
+    w = max(1, args.gumbel_anneal_epochs)
+    t = min(1.0, epoch / w)
+    return args.gumbel_tau_init + t * (args.gumbel_tau_min - args.gumbel_tau_init)
 
 
 def load_cca_data(args: argparse.Namespace, device: torch.device) -> CCADataBundle:
@@ -503,6 +523,7 @@ def train_cca(
         alpha=args.alpha,
         dropout=args.dropout,
         use_gate_M=args.use_gate_M,
+        gumbel_tau=args.gumbel_tau_init,
     ).to(device)
 
     if radgraph_prior is not None:
@@ -594,7 +615,13 @@ def train_cca(
                 pg["lr"] = lr_now
 
         model.train()
+        tau = gumbel_tau_at_epoch(args, epoch)
+        model.gumbel_tau = tau
         epoch_losses = []
+        epoch_bce = []
+        epoch_sparse = []
+        epoch_faith = []
+        epoch_density = []
         for patches, ll, pp, yt, ym in train_loader:
             patches = patches.to(device, non_blocking=True)
             ll = ll.to(device, non_blocking=True)
@@ -602,16 +629,36 @@ def train_cca(
             yt = yt.to(device, non_blocking=True)
             ym = ym.to(device, non_blocking=True)
             opt.zero_grad()
-            out, _attn = model(patches, ll, pp, radgraph_prior=radgraph_prior)
-            raw = F.binary_cross_entropy_with_logits(out, yt, pos_weight=pos_weight, reduction="none")
-            loss = (raw * ym).sum() / ym.sum().clamp(min=1.0)
+            out, _attn, gate_aux = model(patches, ll, pp, radgraph_prior=radgraph_prior, gumbel_tau=tau)
+            loss_bce = masked_bce_with_logits(out, yt, ym, pos_weight)
+            loss = loss_bce
+            if args.lambda_sparse > 0 and gate_aux.get("M_tilde") is not None:
+                l_sparse = sparsity_target_loss(gate_aux["M_tilde"], target=args.sparsity_target)
+                loss = loss + args.lambda_sparse * l_sparse
+                epoch_sparse.append(float(l_sparse.item()))
+                epoch_density.append(float(gate_density(gate_aux["M_tilde"]).item()))
+            if args.lambda_faithful > 0 and args.intervention_per_step > 0 and model.use_gate_M:
+                p_idx = torch.randint(0, model.num_primitives, (patches.shape[0],), device=device)
+                _, out_int, gate_aux_i = model.forward_with_intervention(
+                    patches, ll, pp, p_idx, radgraph_prior=radgraph_prior, gumbel_tau=tau
+                )
+                m_tilde = gate_aux_i.get("M_tilde", gate_aux.get("M_tilde"))
+                if m_tilde is not None:
+                    l_faith = intervention_faithfulness_loss(out, out_int, m_tilde, p_idx)
+                    loss = loss + args.lambda_faithful * l_faith
+                    epoch_faith.append(float(l_faith.item()))
             loss.backward()
             if args.grad_clip_norm and args.grad_clip_norm > 0:
                 nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip_norm)
             opt.step()
             epoch_losses.append(float(loss.item()))
+            epoch_bce.append(float(loss_bce.item()))
 
         train_loss = sum(epoch_losses) / max(1, len(epoch_losses))
+        train_bce = sum(epoch_bce) / max(1, len(epoch_bce))
+        train_sparse = sum(epoch_sparse) / max(1, len(epoch_sparse)) if epoch_sparse else 0.0
+        train_faith = sum(epoch_faith) / max(1, len(epoch_faith)) if epoch_faith else 0.0
+        train_gate_density = sum(epoch_density) / max(1, len(epoch_density)) if epoch_density else 0.0
 
         model.eval()
         val_out_parts = []
@@ -621,7 +668,7 @@ def train_cca(
                 patches = va_patch[start : start + args.batch_size].to(device, non_blocking=True)
                 ll = va_logits[start : start + args.batch_size].to(device, non_blocking=True)
                 pp = va_probs[start : start + args.batch_size].to(device, non_blocking=True)
-                out, _ = model(patches, ll, pp, radgraph_prior=radgraph_prior)
+                out, _, _ = model(patches, ll, pp, radgraph_prior=radgraph_prior, gumbel_tau=args.gumbel_tau_min)
                 val_out_parts.append(out)
             val_out = torch.cat(val_out_parts, dim=0)
             val_prob = torch.sigmoid(val_out)
@@ -635,7 +682,12 @@ def train_cca(
             {
                 "epoch": epoch,
                 "lr": float(opt.param_groups[0]["lr"]),
+                "gumbel_tau": tau,
                 "train_loss": train_loss,
+                "train_l_bce": train_bce,
+                "train_l_sparse": train_sparse,
+                "train_l_faithful": train_faith,
+                "gate_density": train_gate_density,
                 "val_bce": val_bce,
                 "val_macro_f1@0.5": val_f1_05,
                 "val_macro_f1@thr": val_f1_thr,
@@ -683,7 +735,7 @@ def train_cca(
                 patches = t_patch[start : start + args.batch_size].to(device, non_blocking=True)
                 ll = t_logits[start : start + args.batch_size].to(device, non_blocking=True)
                 pp = t_probs[start : start + args.batch_size].to(device, non_blocking=True)
-                out, attn = model(patches, ll, pp, radgraph_prior=radgraph_prior)
+                out, attn, _ = model(patches, ll, pp, radgraph_prior=radgraph_prior, gumbel_tau=args.gumbel_tau_min)
                 parts.append(out)
                 attn_parts.append(attn.cpu())
         return torch.cat(parts, dim=0), torch.cat(attn_parts, dim=0)
@@ -755,6 +807,24 @@ def train_cca(
         "epochs_ran": len(history),
     }
 
+    if model.use_gate_M and model.gate is not None:
+        m_hard = model.gate.hard_gate()
+        metrics_out["gate_density_eval"] = float(gate_density(m_hard).item())
+        n_faith = min(256, va_patch.shape[0])
+        vp = va_patch[:n_faith].to(device)
+        vl = va_logits[:n_faith].to(device)
+        vpp = va_probs[:n_faith].to(device)
+        vy = va_y[:n_faith].to(device)
+        vm = va_m[:n_faith].to(device)
+        faith_extra = necessity_sufficiency_scores(
+            model, vp, vl, vpp, vy, vm, m_hard, radgraph_prior=radgraph_prior
+        )
+        metrics_out.update({f"faithfulness_{k}": v for k, v in faith_extra.items()})
+        with torch.no_grad():
+            p_idx = torch.randint(0, model.num_primitives, (n_faith,), device=device)
+            y0, y1, _ = model.forward_with_intervention(vp, vl, vpp, p_idx, radgraph_prior=radgraph_prior)
+            metrics_out["intervention_consistency"] = intervention_consistency(y0, y1, m_hard, p_idx)
+
     if not save_artifacts:
         if verbose:
             print(
@@ -790,6 +860,8 @@ def train_cca(
                 "n_self_attn_layers": args.n_self_attn_layers,
                 "alpha": args.alpha,
                 "use_gate_M": args.use_gate_M,
+                "lambda_sparse": args.lambda_sparse,
+                "lambda_faithful": args.lambda_faithful,
             },
             "trainable_params": n_params,
         },

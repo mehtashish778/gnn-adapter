@@ -17,10 +17,10 @@ GRAPH4 := data/processed/graph_4way
 CLIP_CACHE_DEFAULT := data/processed/embeddings/chexpert_default_clip_vitb32_v1.pt
 CLIP_CACHE_4WAY := data/processed/embeddings/chexpert_calibrated4way_clip_vitb32_v1.pt
 
-.PHONY: data baselines gnns cca calibrate report tables reproduce help
+.PHONY: data baselines gnns cca cca_baselines build_prior calibrate report tables reproduce help
 
 help:
-	@echo "Targets: data, baselines, gnns, cca, calibrate, report, tables, reproduce"
+	@echo "Targets: data, baselines, gnns, cca, cca_baselines, build_prior, calibrate, report, tables, reproduce"
 	@echo "Windows (no make): powershell -File scripts/run.ps1 help"
 
 data:
@@ -59,6 +59,15 @@ cca:
 	$(PY) scripts/14_train_cca.py --model_id cca --protocol calibrated4way --run_id $(RUN_ID) --gpu_id $(GPU) \
 		--train_rows_json $(SPLIT4)/train_fit_rows.json --calib_rows_json $(SPLIT4)/calib_rows.json \
 		--val_rows_json $(SPLIT4)/val_rows.json --test_rows_json $(SPLIT4)/test_rows.json
+
+build_prior:
+	$(PY) scripts/build_concept_prior.py --num_primitives 30
+	$(PY) scripts/permute_prior.py --in_json data/processed/graph/radgraph_prior_P30.json --out_json data/processed/graph/radgraph_prior_P30_permuted.json
+
+cca_baselines:
+	$(PY) scripts/15_train_posthoc_cbm.py --model_id cbm_posthoc --protocol default --run_id $(RUN_ID) --gpu_id $(GPU)
+	$(PY) scripts/17_train_qformer_adapter.py --model_id qformer_adapter --protocol default --run_id $(RUN_ID) --gpu_id $(GPU) --num_workers 0
+	$(PY) scripts/18_train_mlgcn.py --model_id mlgcn --protocol default --run_id $(RUN_ID) --gpu_id $(GPU)
 
 calibrate:
 	@echo "Run scripts/reproduce_all_results.sh calibrated_eval_run for full 4-way calibration, or:"

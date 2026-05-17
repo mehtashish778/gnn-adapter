@@ -36,7 +36,7 @@ function Invoke-Py {
 
 switch ($Target) {
     "help" {
-        Write-Host "Targets: data, baselines, gnns, cca, cca_optuna, report, tables, reproduce"
+        Write-Host "Targets: data, baselines, gnns, cca, cca_optuna, cca_baselines, build_prior, report, tables, reproduce"
         Write-Host "Set env: GPU, RUN_ID"
     }
     "data" {
@@ -77,6 +77,15 @@ switch ($Target) {
             "--tune_epochs", "25",
             "--final_epochs", "60"
         )
+    }
+    "cca_baselines" {
+        Invoke-Py @("scripts/15_train_posthoc_cbm.py", "--model_id", "cbm_posthoc", "--protocol", "default", "--gpu_id", $Gpu, "--run_id", $RunId)
+        Invoke-Py @("scripts/18_train_mlgcn.py", "--model_id", "mlgcn", "--protocol", "default", "--gpu_id", $Gpu, "--run_id", $RunId)
+        Invoke-Py @("scripts/17_train_qformer_adapter.py", "--model_id", "qformer_adapter", "--protocol", "default", "--gpu_id", $Gpu, "--num_workers", "0", "--run_id", $RunId)
+    }
+    "build_prior" {
+        Invoke-Py @("scripts/build_concept_prior.py", "--num_primitives", "30")
+        Invoke-Py @("scripts/permute_prior.py", "--in_json", "data/processed/graph/radgraph_prior_P30.json", "--out_json", "data/processed/graph/radgraph_prior_P30_permuted.json")
     }
     "report" { Invoke-Py @("scripts/11_package_report.py") }
     "tables" { Invoke-Py @("scripts/generate_tables.py", "--protocol", "calibrated4way") }

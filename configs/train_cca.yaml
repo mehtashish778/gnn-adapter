@@ -1,4 +1,4 @@
-# Compositional Concept Adapter (CCA) — training pipeline reference
+# Concept-Evidence Adapter (CCA) — training pipeline reference
 # Implementation: scripts/14_train_cca.py (core: scripts/cca_train_core.py)
 # Optuna HPO: scripts/tune_cca_optuna.py — see docs/cca_optuna_hpo.md
 
@@ -121,6 +121,15 @@ optuna_final:
 # Optuna hyperparameter search:
 #   python scripts/tune_cca_optuna.py --model_id cca --protocol default --gpu_id 0 --num_workers 0 \
 #     --n_trials 20 --tune_epochs 25 --final_epochs 60
+
+faithfulness:
+  loss: "L_BCE + lambda_sparse * sparsity_target + lambda_faithful * L_faithful"
+  lambda_sparse_default: 0.0
+  lambda_faithful_default: 0.0
+  sparsity_target: 0.10
+  gumbel_tau_init: 1.0
+  gumbel_tau_min: 0.5
+  intervention_per_step: 1
 
 ablations:
   remove_primitive_layer: --n-cross-attn-layers 0

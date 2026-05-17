@@ -15,3 +15,5 @@ gradio
 transformers
 pillow
 optuna
+peft
+torchmetrics

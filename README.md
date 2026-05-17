@@ -1,4 +1,6 @@
-# MBZAI: Multi-Label Chest X-ray Baselines and GNN Adapters
+# MBZAI: Concept-Evidence Adapters for Frozen VLMs on Multi-Label Chest X-Ray Classification
+
+Includes legacy GNN adapter baselines (gnn07/12/13) and the Concept-Evidence Adapter (CCA).
 
 **Paper-style reference (methods, protocols, citations, full result narrative):** [`docs/academic_report.md`](docs/academic_report.md). **Machine-readable summaries:** [`reports/comparison/overall.md`](reports/comparison/overall.md) and [`reports/comparison/overall.json`](reports/comparison/overall.json). **LaTeX/PDF:** `bash scripts/build_academic_report_pdf.sh` → [`docs/academic_report.tex`](docs/academic_report.tex) + [`docs/academic_report.pdf`](docs/academic_report.pdf) (Pandoc, **XeLaTeX** by default, `PDF_ENGINE=…` to override).
 

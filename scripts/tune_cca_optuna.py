@@ -97,6 +97,10 @@ def apply_trial_params(trial: optuna.Trial, args: argparse.Namespace) -> None:
     args.batch_size = trial.suggest_categorical("batch_size", [8, 16, 32])
     args.use_gate_M = trial.suggest_categorical("use_gate_M", [True, False])
     args.init_queries_from_text = trial.suggest_categorical("init_queries_from_text", [True, False])
+    args.lambda_sparse = trial.suggest_float("lambda_sparse", 1e-4, 1e-1, log=True)
+    args.lambda_faithful = trial.suggest_float("lambda_faithful", 1e-3, 1.0, log=True)
+    args.gumbel_tau_init = trial.suggest_categorical("gumbel_tau_init", [0.5, 1.0, 2.0])
+    args.intervention_per_step = 1
 
 
 def objective(
@@ -134,6 +138,10 @@ def objective(
     trial.set_user_attr("test_macro_f1@0.5", float(metrics["test_macro_f1@0.5"]))
     trial.set_user_attr("trainable_params", int(metrics["trainable_params"]))
     trial.set_user_attr("epochs_ran", int(metrics["epochs_ran"]))
+    if "gate_density_eval" in metrics:
+        trial.set_user_attr("gate_density", float(metrics["gate_density_eval"]))
+    if "intervention_consistency" in metrics:
+        trial.set_user_attr("intervention_consistency", float(metrics["intervention_consistency"]))
     return val_f1
 
 

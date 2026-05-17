@@ -1,6 +1,6 @@
 # CCA Optuna hyperparameter optimization
 
-This document records the first Optuna study for the Compositional Concept Adapter (CCA) on the CheXpert **default** split (`train` / `val` / `test`). Implementation: `scripts/tune_cca_optuna.py` (training core: `scripts/cca_train_core.py`).
+This document records the first Optuna study for the Concept-Evidence Adapter (CCA) on the CheXpert **default** split (`train` / `val` / `test`). Implementation: `scripts/tune_cca_optuna.py` (training core: `scripts/cca_train_core.py`).
 
 ## How to run
 
@@ -139,6 +139,30 @@ After Optuna, the script retrains with best params for up to 60 epochs (`early_s
 | `data/processed/experiments/cca/optuna/final_metrics.json` | Final 60-epoch run metrics |
 | `data/processed/experiments/cca/default/best_optuna_cca_hpo/` | Checkpoint, predictions, history |
 | `data/processed/experiments/cca/default/run_20260516_183647/` | Pre-HPO default CCA run |
+
+## Phase 2 faithfulness training
+
+Enable sparse Gumbel gate + intervention loss:
+
+```powershell
+python scripts/14_train_cca.py --model_id cca --protocol default --gpu_id 0 --num_workers 0 `
+  --use_gate_M --lambda_sparse 0.01 --lambda_faithful 0.1 `
+  --best_metric val_macro_f1_05 --run_id cca_faithful
+```
+
+CLI flags: `--lambda_sparse`, `--lambda_faithful`, `--sparsity_target`, `--gumbel_tau_init`, `--gumbel_tau_min`, `--gumbel_anneal_epochs`, `--intervention_per_step`.
+
+## Concept prior ablation
+
+```powershell
+# Build priors only
+python scripts/run_prior_ablation.py --dry_run
+
+# Train CCA with none / co-occur / co-error / radgraph / permuted priors
+python scripts/run_prior_ablation.py --gpu_id 0 --epochs 30 --run_id_prefix prior_ablation
+```
+
+Or stepwise: `scripts/build_concept_prior.py`, `scripts/permute_prior.py`, then `14_train_cca.py --radgraph_prior_json <path>`.
 
 ## Recommended next steps
 

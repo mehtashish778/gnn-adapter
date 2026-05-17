@@ -32,6 +32,10 @@ NUMBERED_SCRIPTS = {
     "gnn12_clip_vlm_homo": "scripts/12_train_clip_vlm_gnn_adapter.py",
     "gnn13_clip_bipartite": "scripts/13_train_bipartite_gnn_adapter.py",
     "cca": "scripts/14_train_cca.py",
+    "cbm_posthoc": "scripts/15_train_posthoc_cbm.py",
+    "cbm_labelfree": "scripts/16_train_labelfree_cbm.py",
+    "qformer_adapter": "scripts/17_train_qformer_adapter.py",
+    "mlgcn": "scripts/18_train_mlgcn.py",
 }
 
 
@@ -89,6 +93,17 @@ def main():
         "--use_numbered_script",
         action="store_true",
         help="Call numbered scripts directly instead of models/*/train.py wrappers.",
+    )
+    parser.add_argument(
+        "--stats_after",
+        action="store_true",
+        help="Run scripts/stats_compare.py after all seeds finish.",
+    )
+    parser.add_argument(
+        "--stats_models",
+        nargs="+",
+        default=None,
+        help="Models passed to stats_compare (default: model_id + vlm_mlp).",
     )
     parser.add_argument("extra_args", nargs=argparse.REMAINDER, help="Extra args forwarded to training script.")
     args = parser.parse_args()
@@ -159,6 +174,22 @@ def main():
     json_path = out_dir / "seeds_summary.json"
     write_json(json_path, {"git_hash": ghash, "rows": rows})
     print({"wrote": str(parquet_path), "n_seeds": len(rows)})
+
+    if args.stats_after:
+        stats_models = args.stats_models or [args.model_id, "vlm_mlp"]
+        stats_cmd = [
+            sys.executable,
+            str(repo / "scripts/stats_compare.py"),
+            "--repo",
+            str(repo),
+            "--protocol",
+            args.protocol,
+            "--reference",
+            args.model_id,
+            "--models",
+            *stats_models,
+        ]
+        subprocess.check_call(stats_cmd, cwd=repo)
 
 
 if __name__ == "__main__":
