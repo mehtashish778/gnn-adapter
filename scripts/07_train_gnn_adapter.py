@@ -3,113 +3,20 @@ import argparse
 import json
 from pathlib import Path
 
-from common_multilabel import masked_subset_accuracy, write_json
+from common_multilabel import (
+    build_adj,
+    load_per_class_thresholds,
+    load_rows,
+    masked_bce_with_logits,
+    masked_macro_f1,
+    masked_subset_accuracy,
+    require_cuda_device,
+    set_seed,
+    to_label_tensors,
+    write_json,
+)
 from model_registry import resolve_experiment_dir, update_run_registry
-
-
-def load_rows(path: Path):
-    with path.open("r", encoding="utf-8") as f:
-        return json.load(f)["rows"]
-
-
-def build_adj(num_nodes, edge_index, edge_weight):
-    import torch
-
-    a = torch.zeros((num_nodes, num_nodes), dtype=torch.float32)
-    for s, t, w in zip(edge_index[0], edge_index[1], edge_weight):
-        a[s, t] = float(w)
-    a = a + torch.eye(num_nodes)
-    deg = a.sum(dim=1, keepdim=True).clamp(min=1e-8)
-    return a / deg
-
-
-def to_tensors(rows):
-    import torch
-
-    x_probs = torch.tensor([r["x_probs"] for r in rows], dtype=torch.float32)
-    x_logits = torch.tensor([r["x_logits"] for r in rows], dtype=torch.float32)
-    y_true = torch.tensor([r["y_true"] for r in rows], dtype=torch.float32)
-    y_mask = torch.tensor([r["y_mask"] for r in rows], dtype=torch.float32)
-    return x_logits, x_probs, y_true, y_mask
-
-
-class ResidualLabelGNN:
-    def __init__(self, c, hidden_dim, alpha):
-        import torch
-        import torch.nn as nn
-
-        class _Model(nn.Module):
-            def __init__(self):
-                super().__init__()
-                self.fc1 = nn.Linear(2, hidden_dim)
-                self.fc2 = nn.Linear(hidden_dim, 1)
-                self.alpha = alpha
-
-            def forward(self, logits, probs, adj):
-                x = torch.stack([logits, probs], dim=-1)  # B,C,2
-                x = torch.relu(self.fc1(x))
-                x = self.fc2(x).squeeze(-1)  # B,C
-                x = torch.matmul(x, adj.T)
-                return logits + self.alpha * x
-
-        self.model = _Model()
-
-
-def masked_macro_f1(probs, y_true, y_mask, threshold=0.5):
-    import torch
-
-    c = probs.shape[1]
-    if isinstance(threshold, (list, tuple)):
-        thr = torch.tensor(threshold, dtype=probs.dtype, device=probs.device)
-        pred = (probs >= thr.unsqueeze(0)).float()
-    else:
-        pred = (probs >= float(threshold)).float()
-    f1s = []
-    for i in range(c):
-        mask = y_mask[:, i] > 0
-        if mask.sum() == 0:
-            f1s.append(torch.tensor(0.0, device=probs.device))
-            continue
-        p = pred[mask, i]
-        y = y_true[mask, i]
-        tp = ((p == 1) & (y == 1)).sum().float()
-        fp = ((p == 1) & (y == 0)).sum().float()
-        fn = ((p == 0) & (y == 1)).sum().float()
-        denom = (2 * tp + fp + fn).clamp(min=1e-8)
-        f1s.append((2 * tp) / denom)
-    return torch.stack(f1s).mean().item()
-
-
-def masked_bce_with_logits(out, y_true, y_mask, pos_weight):
-    import torch
-    import torch.nn.functional as F
-
-    raw = F.binary_cross_entropy_with_logits(out, y_true, pos_weight=pos_weight, reduction="none")
-    return (raw * y_mask).sum() / y_mask.sum().clamp(min=1.0)
-
-
-def load_per_class_thresholds(path: Path):
-    if not path.exists():
-        return None
-    with path.open("r", encoding="utf-8") as f:
-        payload = json.load(f)
-    th = payload.get("thresholds")
-    if not th:
-        return None
-    return [float(x) for x in th]
-
-
-def set_seed(seed: int):
-    import random
-
-    import numpy as np
-    import torch
-
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(seed)
+from models.architectures.gnn07_label_residual import ResidualLabelGNNModel
 
 
 def main():
@@ -162,12 +69,7 @@ def main():
     except Exception as exc:
         raise RuntimeError("This script requires PyTorch.") from exc
 
-    if not torch.cuda.is_available():
-        raise RuntimeError("GPU-only mode: CUDA is not available.")
-    if args.gpu_id < 0 or args.gpu_id >= torch.cuda.device_count():
-        raise RuntimeError(f"Invalid --gpu_id {args.gpu_id}; available GPUs: 0..{torch.cuda.device_count()-1}")
-    torch.cuda.set_device(args.gpu_id)
-    device = torch.device(f"cuda:{args.gpu_id}")
+    device = require_cuda_device(args.gpu_id)
 
     set_seed(args.seed)
 
@@ -186,7 +88,7 @@ def main():
 
     c = len(train_rows[0]["x_probs"])
     adj = build_adj(c, edge_index, edge_weight).to(device)
-    model = ResidualLabelGNN(c=c, hidden_dim=args.hidden_dim, alpha=args.alpha).model
+    model = ResidualLabelGNNModel(hidden_dim=args.hidden_dim, alpha=args.alpha)
     model = model.to(device)
     if args.resume_from:
         state = torch.load(args.resume_from, map_location="cpu")
@@ -202,11 +104,11 @@ def main():
             min_lr=args.min_lr,
         )
 
-    tr_logits, tr_probs, tr_y, tr_m = to_tensors(train_rows)
-    va_logits, va_probs, va_y, va_m = to_tensors(val_rows)
-    te_logits, te_probs, te_y, te_m = to_tensors(test_rows)
+    tr_logits, tr_probs, tr_y, tr_m = to_label_tensors(train_rows)
+    va_logits, va_probs, va_y, va_m = to_label_tensors(val_rows)
+    te_logits, te_probs, te_y, te_m = to_label_tensors(test_rows)
     if calib_rows is not None:
-        ca_logits, ca_probs, ca_y, ca_m = to_tensors(calib_rows)
+        ca_logits, ca_probs, ca_y, ca_m = to_label_tensors(calib_rows)
     tr_logits = tr_logits.to(device)
     tr_probs = tr_probs.to(device)
     tr_y = tr_y.to(device)

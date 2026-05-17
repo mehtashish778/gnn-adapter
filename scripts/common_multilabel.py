@@ -1,10 +1,11 @@
+import argparse
 import csv
 import json
 import math
 import random
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Dict, List, Sequence, Tuple, Union
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 
 VLM_LABELS = [
@@ -206,3 +207,160 @@ def train_val_test_split(
 def read_csv_rows(path: Path) -> List[dict]:
     with path.open("r", encoding="utf-8", newline="") as f:
         return list(csv.DictReader(f))
+
+
+def load_rows(path: Path) -> List[dict]:
+    """Load aligned multilabel rows from a splits JSON file."""
+    with path.open("r", encoding="utf-8") as f:
+        return json.load(f)["rows"]
+
+
+def row_ids(rows: Sequence[dict]) -> List[str]:
+    """Stable row identifiers for feature-cache integrity checks."""
+    return [normalize_path(str(r.get("path", i))) for i, r in enumerate(rows)]
+
+
+def to_vlm_feature_tensors(rows: Sequence[dict]):
+    """Stack VLM logits/probs and labels into tensors; MLP input is flattened [z;p]."""
+    import torch
+
+    x_probs = torch.tensor([r["x_probs"] for r in rows], dtype=torch.float32)
+    x_logits = torch.tensor([r["x_logits"] for r in rows], dtype=torch.float32)
+    y_true = torch.tensor([r["y_true"] for r in rows], dtype=torch.float32)
+    y_mask = torch.tensor([r["y_mask"] for r in rows], dtype=torch.float32)
+    x = torch.stack([x_logits, x_probs], dim=-1).reshape(len(rows), -1)
+    return x, x_logits, x_probs, y_true, y_mask
+
+
+def to_vlm_training_batch(rows: Sequence[dict]):
+    """Return ``(x, y_true, y_mask)`` for MLP / training_engine (not logits/probs)."""
+    x, _x_logits, _x_probs, y_true, y_mask = to_vlm_feature_tensors(rows)
+    return x, y_true, y_mask
+
+
+def to_label_tensors(rows: Sequence[dict]):
+    """VLM logits/probs and labels only (no flattened MLP input)."""
+    import torch
+
+    x_logits = torch.tensor([r["x_logits"] for r in rows], dtype=torch.float32)
+    x_probs = torch.tensor([r["x_probs"] for r in rows], dtype=torch.float32)
+    y_true = torch.tensor([r["y_true"] for r in rows], dtype=torch.float32)
+    y_mask = torch.tensor([r["y_mask"] for r in rows], dtype=torch.float32)
+    return x_logits, x_probs, y_true, y_mask
+
+
+def build_adj(num_nodes: int, edge_index: Sequence[Sequence[int]], edge_weight: Sequence[float]):
+    """Row-normalized adjacency with self-loops."""
+    import torch
+
+    a = torch.zeros((num_nodes, num_nodes), dtype=torch.float32)
+    for s, t, w in zip(edge_index[0], edge_index[1], edge_weight):
+        a[int(s), int(t)] = float(w)
+    a = a + torch.eye(num_nodes, dtype=torch.float32)
+    deg = a.sum(dim=1, keepdim=True).clamp(min=1e-8)
+    return a / deg
+
+
+def masked_macro_f1(probs, y_true, y_mask, threshold: Union[float, Sequence[float]] = 0.5) -> float:
+    """Per-class masked macro-F1; threshold may be scalar or per-class list."""
+    import torch
+
+    c = probs.shape[1]
+    if isinstance(threshold, (list, tuple)):
+        thr = torch.tensor(threshold, dtype=probs.dtype, device=probs.device)
+        pred = (probs >= thr.unsqueeze(0)).float()
+    else:
+        pred = (probs >= float(threshold)).float()
+    f1s = []
+    for i in range(c):
+        mask = y_mask[:, i] > 0
+        if mask.sum() == 0:
+            f1s.append(torch.tensor(0.0, device=probs.device))
+            continue
+        p = pred[mask, i]
+        y = y_true[mask, i]
+        tp = ((p == 1) & (y == 1)).sum().float()
+        fp = ((p == 1) & (y == 0)).sum().float()
+        fn = ((p == 0) & (y == 1)).sum().float()
+        denom = (2 * tp + fp + fn).clamp(min=1e-8)
+        f1s.append((2 * tp) / denom)
+    return torch.stack(f1s).mean().item()
+
+
+def masked_bce_with_logits(out, y_true, y_mask, pos_weight) -> Any:
+    """Masked binary cross-entropy with logits."""
+    import torch.nn.functional as F
+
+    raw = F.binary_cross_entropy_with_logits(out, y_true, pos_weight=pos_weight, reduction="none")
+    return (raw * y_mask).sum() / y_mask.sum().clamp(min=1.0)
+
+
+def compute_pos_weight(y_true, y_mask, max_weight: float = 100.0):
+    """Per-class positive weights for BCE (neg/pos ratio, clamped)."""
+    import torch
+
+    pos = (y_true * y_mask).sum(dim=0)
+    neg = ((1 - y_true) * y_mask).sum(dim=0).clamp(min=1)
+    return (neg / pos.clamp(min=1)).clamp(max=max_weight)
+
+
+def set_seed(seed: int) -> None:
+    random.seed(seed)
+    try:
+        import numpy as np
+
+        np.random.seed(seed)
+    except ImportError:
+        pass
+    try:
+        import torch
+
+        torch.manual_seed(seed)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed_all(seed)
+    except ImportError:
+        pass
+
+
+def load_per_class_thresholds(path: Path) -> Optional[List[float]]:
+    if not path.exists():
+        return None
+    with path.open("r", encoding="utf-8") as f:
+        payload = json.load(f)
+    th = payload.get("thresholds")
+    if not th:
+        return None
+    return [float(x) for x in th]
+
+
+def build_standard_argparser(description: str) -> argparse.ArgumentParser:
+    """Shared CLI flags for training scripts."""
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument("--train_rows_json", default="data/processed/splits/train_rows.json")
+    parser.add_argument("--val_rows_json", default="data/processed/splits/val_rows.json")
+    parser.add_argument("--test_rows_json", default="data/processed/splits/test_rows.json")
+    parser.add_argument("--calib_rows_json", default=None, help="Optional calibration rows JSON.")
+    parser.add_argument("--epochs", type=int, default=20)
+    parser.add_argument("--lr", type=float, default=1e-3)
+    parser.add_argument("--out_dir", default="")
+    parser.add_argument("--model_id", default="")
+    parser.add_argument("--protocol", default="")
+    parser.add_argument("--run_id", default="")
+    parser.add_argument("--resume_from", default="", help="Optional checkpoint path.")
+    parser.add_argument("--gpu_id", type=int, default=0, help="Single GPU index.")
+    parser.add_argument("--seed", type=int, default=42)
+    return parser
+
+
+def require_cuda_device(gpu_id: int):
+    """Return torch device after validating CUDA availability."""
+    import torch
+
+    if not torch.cuda.is_available():
+        raise RuntimeError("GPU-only mode: CUDA is not available.")
+    if gpu_id < 0 or gpu_id >= torch.cuda.device_count():
+        raise RuntimeError(
+            f"Invalid --gpu_id {gpu_id}; available GPUs: 0..{torch.cuda.device_count() - 1}"
+        )
+    torch.cuda.set_device(gpu_id)
+    return torch.device(f"cuda:{gpu_id}")

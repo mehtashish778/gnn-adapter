@@ -41,6 +41,11 @@ MODEL_SPECS: Dict[str, ModelSpec] = {
         display_name="ClipBipartiteAttributeGNN",
         description="CLIP object node + VLM attribute nodes with bipartite message passing.",
     ),
+    "cca": ModelSpec(
+        model_id="cca",
+        display_name="CompositionalConceptAdapter",
+        description="3-layer CCA: patch cross-attention → self-attn compositional → VLM-gated findings readout.",
+    ),
 }
 
 
