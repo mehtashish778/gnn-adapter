@@ -11,6 +11,7 @@ This document maps each script to its inputs/outputs so you can debug or rerun s
 - `gnn07_label_residual` -> `LabelGraphResidualGNN`
 - `gnn12_clip_vlm_homo` -> `ClipVlmHomogeneousGNN`
 - `gnn13_clip_bipartite` -> `ClipBipartiteAttributeGNN`
+- `cca` -> `CCAModel` (Compositional Concept Adapter)
 
 Organized output path:
 - `data/processed/experiments/<model_id>/<protocol>/<run_id>/...`
@@ -100,6 +101,21 @@ Output directory:
 
 ### One-shot run for all variants
 Script: `scripts/run_all_gnn_variants.sh`
+
+### Compositional Concept Adapter (CCA)
+Script: `scripts/14_train_cca.py` (core: `scripts/cca_train_core.py`)  
+Config reference: `configs/train_cca.yaml`  
+Optuna HPO: `scripts/tune_cca_optuna.py` — full write-up in **`docs/cca_optuna_hpo.md`**
+
+Outputs:
+- `data/processed/experiments/cca/<protocol>/<run_id>/best_checkpoint.pt`
+- `metrics.json`, `val_predictions.json`, `test_predictions.json`, `attention_maps.pt`
+- Patch cache: `data/processed/embeddings/*_patch_v2_fp16.pt`
+
+Documented runs (default protocol):
+- `run_20260516_183647` — default hparams (test F1 @0.5 ≈ 0.653)
+- `best_optuna_cca_hpo` — Optuna trial-27 hparams, 60-epoch final (test F1 @0.5 ≈ 0.658)
+- `data/processed/experiments/cca/optuna/best_trial.json` — best tuning trial (val F1 @0.5 ≈ 0.701)
 
 ## 7) Thresholds, Evaluation, and Reporting
 

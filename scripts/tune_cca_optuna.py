@@ -4,6 +4,9 @@ Optuna hyperparameter search for CCA.
 
 Loads patch caches once, runs many short training trials, then optionally
 re-trains with the best config and full epoch budget.
+
+Results and analysis: docs/cca_optuna_hpo.md
+Config presets: configs/train_cca.yaml (optuna_best_trial27, optuna_final)
 """
 
 from __future__ import annotations
