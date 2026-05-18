@@ -295,6 +295,83 @@ def masked_bce_with_logits(out, y_true, y_mask, pos_weight) -> Any:
     return (raw * y_mask).sum() / y_mask.sum().clamp(min=1.0)
 
 
+def probabilistic_metrics(probs, y_true, y_mask, n_ece_bins: int = 15) -> dict:
+    """Per-class AUROC, AUPRC, ECE, Brier; mean (macro) over masked classes.
+
+    Inputs are torch tensors of shape (N, C) or numpy arrays. Masked entries
+    (y_mask == 0) are excluded per-class. Classes with zero positives or
+    zero negatives after masking get NaN AUROC/AUPRC and are excluded from
+    the macro mean (Brier/ECE still computed where possible).
+    """
+    import numpy as np
+
+    try:
+        import torch
+
+        if hasattr(probs, "detach"):
+            probs = probs.detach().cpu().numpy()
+        if hasattr(y_true, "detach"):
+            y_true = y_true.detach().cpu().numpy()
+        if hasattr(y_mask, "detach"):
+            y_mask = y_mask.detach().cpu().numpy()
+    except ImportError:
+        pass
+
+    try:
+        from sklearn.metrics import average_precision_score, roc_auc_score
+    except ImportError:
+        roc_auc_score = average_precision_score = None
+
+    c = probs.shape[1]
+    aurocs, auprcs, briers, eces = [], [], [], []
+    per_class: list[dict] = []
+    for i in range(c):
+        m = y_mask[:, i] > 0.5
+        if m.sum() < 2:
+            per_class.append({"auroc": float("nan"), "auprc": float("nan"), "ece": float("nan"), "brier": float("nan")})
+            continue
+        p = probs[m, i].astype(np.float64)
+        y = y_true[m, i].astype(np.float64)
+        n_pos = float(y.sum())
+        n_neg = float(len(y) - n_pos)
+        if roc_auc_score is not None and n_pos > 0 and n_neg > 0:
+            auroc = float(roc_auc_score(y, p))
+            auprc = float(average_precision_score(y, p))
+        else:
+            auroc = float("nan")
+            auprc = float("nan")
+        brier = float(((p - y) ** 2).mean())
+        bins = np.linspace(0.0, 1.0, n_ece_bins + 1)
+        bin_idx = np.digitize(p, bins) - 1
+        bin_idx = np.clip(bin_idx, 0, n_ece_bins - 1)
+        ece = 0.0
+        for b in range(n_ece_bins):
+            sel = bin_idx == b
+            if not sel.any():
+                continue
+            avg_conf = float(p[sel].mean())
+            avg_acc = float(y[sel].mean())
+            ece += (sel.sum() / len(p)) * abs(avg_conf - avg_acc)
+        per_class.append({"auroc": auroc, "auprc": auprc, "ece": float(ece), "brier": brier})
+        if not np.isnan(auroc):
+            aurocs.append(auroc)
+        if not np.isnan(auprc):
+            auprcs.append(auprc)
+        briers.append(brier)
+        eces.append(float(ece))
+
+    def _macro(xs):
+        return float(np.mean(xs)) if xs else float("nan")
+
+    return {
+        "macro_auroc": _macro(aurocs),
+        "macro_auprc": _macro(auprcs),
+        "macro_ece": _macro(eces),
+        "macro_brier": _macro(briers),
+        "per_class": per_class,
+    }
+
+
 def compute_pos_weight(y_true, y_mask, max_weight: float = 100.0):
     """Per-class positive weights for BCE (neg/pos ratio, clamped)."""
     import torch

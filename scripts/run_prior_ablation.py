@@ -141,6 +141,7 @@ def main():
             str(args.epochs),
             "--run_id",
             run_id,
+            "--no-save_attention_maps",
         ]
         if prior_json:
             cmd.extend(["--radgraph_prior_json", prior_json])

@@ -64,24 +64,56 @@ def main():
 
     model.eval()
     with torch.no_grad():
-        va_logits, _ = model(xva.to(device))
-        te_logits, _ = model(xte.to(device))
-        from common_multilabel import masked_macro_f1
+        va_out, _ = model(xva.to(device))
+        te_out, _ = model(xte.to(device))
+        from common_multilabel import masked_macro_f1, probabilistic_metrics
 
-        va_f1 = masked_macro_f1(torch.sigmoid(va_logits), yva.to(device), mva.to(device))
-        te_f1 = masked_macro_f1(torch.sigmoid(te_logits), yte.to(device), mte.to(device))
+        va_prob = torch.sigmoid(va_out)
+        te_prob = torch.sigmoid(te_out)
+        va_f1 = masked_macro_f1(va_prob, yva.to(device), mva.to(device))
+        te_f1 = masked_macro_f1(te_prob, yte.to(device), mte.to(device))
+        va_pm = probabilistic_metrics(va_prob, yva, mva)
+        te_pm = probabilistic_metrics(te_prob, yte, mte)
 
     out_dir = resolve_experiment_dir(
+        out_dir=args.out_dir or None,
         model_id=args.model_id or "cbm_posthoc",
-        protocol=args.protocol,
-        run_id=args.run_id,
+        protocol=args.protocol or "default",
+        run_id=args.run_id or None,
         default_legacy_out_dir="data/processed/experiments/cbm_posthoc",
     )
     out_dir.mkdir(parents=True, exist_ok=True)
-    metrics = {"val_macro_f1@0.5": float(va_f1), "test_macro_f1@0.5": float(te_f1)}
+    metrics = {
+        "variant": "cbm_posthoc",
+        "trainable_params": sum(p.numel() for p in model.parameters() if p.requires_grad),
+        "val_macro_f1@0.5": float(va_f1),
+        "test_macro_f1@0.5": float(te_f1),
+        "val_macro_auroc": va_pm["macro_auroc"],
+        "test_macro_auroc": te_pm["macro_auroc"],
+        "val_macro_auprc": va_pm["macro_auprc"],
+        "test_macro_auprc": te_pm["macro_auprc"],
+        "val_macro_ece": va_pm["macro_ece"],
+        "test_macro_ece": te_pm["macro_ece"],
+        "val_macro_brier": va_pm["macro_brier"],
+        "test_macro_brier": te_pm["macro_brier"],
+    }
     write_json(out_dir / "metrics.json", metrics)
+    write_json(
+        out_dir / "test_predictions.json",
+        {"probs": te_prob.cpu().tolist(), "y_true": yte.tolist(), "y_mask": mte.tolist()},
+    )
+    write_json(
+        out_dir / "val_predictions.json",
+        {"probs": va_prob.cpu().tolist(), "y_true": yva.tolist(), "y_mask": mva.tolist()},
+    )
     torch.save(model.state_dict(), out_dir / "best_checkpoint.pt")
-    update_run_registry(args.model_id or "cbm_posthoc", args.protocol, out_dir, metrics, {})
+    update_run_registry(
+        model_id=args.model_id or "cbm_posthoc",
+        protocol=args.protocol or "default",
+        run_dir=out_dir,
+        metrics={"val_macro_f1@0.5": float(va_f1), "test_macro_f1@0.5": float(te_f1)},
+        hparams={"epochs": args.epochs, "lr": args.lr, "num_concepts": args.num_concepts},
+    )
     print(metrics)
 
 

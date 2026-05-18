@@ -79,23 +79,57 @@ def main():
             opt.step()
 
     model.eval()
+    from common_multilabel import probabilistic_metrics
+
     with torch.no_grad():
         va_out = model(va_logits.to(device), va_probs.to(device))
         te_out = model(te_logits.to(device), te_probs.to(device))
-        va_f1 = masked_macro_f1(torch.sigmoid(va_out), va_y.to(device), va_m.to(device))
-        te_f1 = masked_macro_f1(torch.sigmoid(te_out), te_y.to(device), te_m.to(device))
+        va_prob = torch.sigmoid(va_out)
+        te_prob = torch.sigmoid(te_out)
+        va_f1 = masked_macro_f1(va_prob, va_y.to(device), va_m.to(device))
+        te_f1 = masked_macro_f1(te_prob, te_y.to(device), te_m.to(device))
+        va_pm = probabilistic_metrics(va_prob, va_y, va_m)
+        te_pm = probabilistic_metrics(te_prob, te_y, te_m)
 
     out_dir = resolve_experiment_dir(
+        out_dir=args.out_dir or None,
         model_id=args.model_id or "mlgcn",
-        protocol=args.protocol,
-        run_id=args.run_id,
+        protocol=args.protocol or "default",
+        run_id=args.run_id or None,
         default_legacy_out_dir="data/processed/experiments/mlgcn",
     )
     out_dir.mkdir(parents=True, exist_ok=True)
-    metrics = {"val_macro_f1@0.5": float(va_f1), "test_macro_f1@0.5": float(te_f1)}
+    metrics = {
+        "variant": "mlgcn",
+        "trainable_params": sum(p.numel() for p in model.parameters() if p.requires_grad),
+        "val_macro_f1@0.5": float(va_f1),
+        "test_macro_f1@0.5": float(te_f1),
+        "val_macro_auroc": va_pm["macro_auroc"],
+        "test_macro_auroc": te_pm["macro_auroc"],
+        "val_macro_auprc": va_pm["macro_auprc"],
+        "test_macro_auprc": te_pm["macro_auprc"],
+        "val_macro_ece": va_pm["macro_ece"],
+        "test_macro_ece": te_pm["macro_ece"],
+        "val_macro_brier": va_pm["macro_brier"],
+        "test_macro_brier": te_pm["macro_brier"],
+    }
     write_json(out_dir / "metrics.json", metrics)
+    write_json(
+        out_dir / "test_predictions.json",
+        {"probs": te_prob.cpu().tolist(), "y_true": te_y.tolist(), "y_mask": te_m.tolist()},
+    )
+    write_json(
+        out_dir / "val_predictions.json",
+        {"probs": va_prob.cpu().tolist(), "y_true": va_y.tolist(), "y_mask": va_m.tolist()},
+    )
     torch.save(model.state_dict(), out_dir / "best_checkpoint.pt")
-    update_run_registry(args.model_id or "mlgcn", args.protocol, out_dir, metrics, {})
+    update_run_registry(
+        model_id=args.model_id or "mlgcn",
+        protocol=args.protocol or "default",
+        run_dir=out_dir,
+        metrics={"val_macro_f1@0.5": float(va_f1), "test_macro_f1@0.5": float(te_f1)},
+        hparams={"epochs": args.epochs, "lr": args.lr},
+    )
     print(metrics)
 
 

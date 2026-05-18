@@ -126,6 +126,10 @@ Documented runs (default protocol):
 - `best_optuna_cca_hpo` — Optuna trial-27 hparams, 60-epoch final, val_bce ckpt (test ≈ 0.658)
 - `data/processed/experiments/cca/optuna/best_trial.json` — best tuning trial (val F1 @0.5 ≈ 0.701)
 - LoRA variant table: [`reports/comparison/cca_lora_variants.md`](../reports/comparison/cca_lora_variants.md)
+- Concept-prior ablation table: [`reports/comparison/cca_prior_ablation.md`](../reports/comparison/cca_prior_ablation.md)
+- 5-seed leaderboard config (`lora_r8_trial27_seeds_s{0..4}`): see [`docs/cca_experiment_results.md §4a`](cca_experiment_results.md#4a-5-seeds--lora--trial-27-hparams-the-leaderboard-config)
+- Baselines (`cbm_posthoc`, `cbm_labelfree`, `qformer_adapter`, `mlgcn`): [`docs/cca_experiment_results.md §5`](cca_experiment_results.md#5-baselines-same-default-split-05)
+- Held-out-concept JSONs: `reports/holdout/cca_lora_r8_*.json`, `reports/holdout/cca_frozen_faithful.json`
 
 ### Phase 4 baselines (same patch cache as CCA)
 | Script | model_id |

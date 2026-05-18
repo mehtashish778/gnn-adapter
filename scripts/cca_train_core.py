@@ -38,6 +38,7 @@ from common_multilabel import (
     masked_bce_with_logits,
     masked_macro_f1,
     masked_subset_accuracy,
+    probabilistic_metrics,
     require_cuda_device,
     resolve_dataset_image_path,
     row_ids,
@@ -326,7 +327,7 @@ def build_argparser() -> argparse.ArgumentParser:
     parser.add_argument("--use_gate_M", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--lambda_sparse", type=float, default=0.0, help="Weight on sparsity target loss for gate M.")
     parser.add_argument("--lambda_faithful", type=float, default=0.0, help="Weight on intervention faithfulness loss.")
-    parser.add_argument("--sparsity_target", type=float, default=0.10, help="Target gate density (5-15% band center).")
+    parser.add_argument("--sparsity_target", type=float, default=0.10, help="Target gate density (5-15%% band center).")
     parser.add_argument("--gumbel_tau_init", type=float, default=1.0)
     parser.add_argument("--gumbel_tau_min", type=float, default=0.5)
     parser.add_argument("--gumbel_anneal_epochs", type=int, default=10)
@@ -354,6 +355,12 @@ def build_argparser() -> argparse.ArgumentParser:
     parser.add_argument("--run_id", default="")
     parser.add_argument("--resume_from", default="")
     parser.add_argument("--gpu_id", type=int, default=0)
+    parser.add_argument(
+        "--save_attention_maps",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Save layer-1 attention maps for val/test (large; ~400MB).",
+    )
     return parser
 
 
@@ -872,6 +879,22 @@ def train_cca(
         "epochs_ran": len(history),
     }
 
+    val_probs_metrics = probabilistic_metrics(val_prob, va_y, va_m)
+    test_probs_metrics = probabilistic_metrics(test_prob, te_y, te_m)
+    for split, mset in (("val", val_probs_metrics), ("test", test_probs_metrics)):
+        metrics_out[f"{split}_macro_auroc"] = mset["macro_auroc"]
+        metrics_out[f"{split}_macro_auprc"] = mset["macro_auprc"]
+        metrics_out[f"{split}_macro_ece"] = mset["macro_ece"]
+        metrics_out[f"{split}_macro_brier"] = mset["macro_brier"]
+        metrics_out[f"{split}_per_class"] = mset["per_class"]
+    if calib_rows is not None and calib_prob is not None:
+        cm = probabilistic_metrics(calib_prob, ca_y, ca_m)
+        metrics_out["calib_macro_auroc"] = cm["macro_auroc"]
+        metrics_out["calib_macro_auprc"] = cm["macro_auprc"]
+        metrics_out["calib_macro_ece"] = cm["macro_ece"]
+        metrics_out["calib_macro_brier"] = cm["macro_brier"]
+        metrics_out["calib_per_class"] = cm["per_class"]
+
     if model.use_gate_M and model.gate is not None:
         m_hard = model.gate.hard_gate()
         metrics_out["gate_density_eval"] = float(gate_density(m_hard).item())
@@ -947,7 +970,8 @@ def train_cca(
             out_dir / "calib_predictions.json",
             {"probs": calib_prob.tolist(), "y_true": ca_y.tolist(), "y_mask": ca_m.tolist()},
         )
-    torch.save({"val": val_attn, "test": test_attn}, out_dir / "attention_maps.pt")
+    if getattr(args, "save_attention_maps", True):
+        torch.save({"val": val_attn, "test": test_attn}, out_dir / "attention_maps.pt")
 
     if args.model_id and args.protocol:
         update_run_registry(

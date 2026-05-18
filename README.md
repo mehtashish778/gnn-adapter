@@ -2,7 +2,7 @@
 
 Includes legacy GNN adapter baselines (gnn07/12/13) and the Concept-Evidence Adapter (CCA).
 
-**CCA experiment results (2026-05-17):** [`docs/cca_experiment_results.md`](docs/cca_experiment_results.md) — Optuna HPO, LoRA variants, multi-seed, faithfulness.
+**CCA experiment results (2026-05-18):** [`docs/cca_experiment_results.md`](docs/cca_experiment_results.md) — Optuna HPO, LoRA variants, **5-seed sweep**, **CBM / QFormer / MLGCN baselines**, **concept-prior ablation**, **held-out-concept probe**, AUROC/AUPRC/ECE/Brier.
 
 **Reproduce CCA from scratch:** [`docs/cca_reproduction.md`](docs/cca_reproduction.md) — environment, patch caches, exact commands + full hyperparameter reference for every leaderboard run.
 

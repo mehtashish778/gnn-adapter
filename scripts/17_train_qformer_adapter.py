@@ -75,26 +75,63 @@ def main():
 
     model.load_state_dict(best_state)
     model.eval()
+    from common_multilabel import probabilistic_metrics
+
     with torch.no_grad():
+        va_parts = []
+        for start in range(0, data.va_patch.shape[0], args.batch_size):
+            va_parts.append(model(data.va_patch[start : start + args.batch_size].to(device)))
+        va_out = torch.cat(va_parts, dim=0)
         te_parts = []
         for start in range(0, data.te_patch.shape[0], args.batch_size):
             te_parts.append(model(data.te_patch[start : start + args.batch_size].to(device)))
         te_out = torch.cat(te_parts, dim=0)
-        te_f1 = masked_macro_f1(
-            torch.sigmoid(te_out), data.te_y.to(device), data.te_m.to(device)
-        )
+        va_prob = torch.sigmoid(va_out)
+        te_prob = torch.sigmoid(te_out)
+        va_f1 = masked_macro_f1(va_prob, data.va_y.to(device), data.va_m.to(device))
+        te_f1 = masked_macro_f1(te_prob, data.te_y.to(device), data.te_m.to(device))
+        va_pm = probabilistic_metrics(va_prob, data.va_y, data.va_m)
+        te_pm = probabilistic_metrics(te_prob, data.te_y, data.te_m)
 
     out_dir = resolve_experiment_dir(
+        out_dir=args.out_dir or None,
         model_id=args.model_id or "qformer_adapter",
-        protocol=args.protocol,
-        run_id=args.run_id,
+        protocol=args.protocol or "default",
+        run_id=args.run_id or None,
         default_legacy_out_dir="data/processed/experiments/qformer_adapter",
     )
     out_dir.mkdir(parents=True, exist_ok=True)
-    metrics = {"val_macro_f1@0.5": float(best_f1), "test_macro_f1@0.5": float(te_f1)}
+    metrics = {
+        "variant": "qformer_adapter",
+        "trainable_params": sum(p.numel() for p in model.parameters() if p.requires_grad),
+        "val_macro_f1@0.5": float(va_f1),
+        "test_macro_f1@0.5": float(te_f1),
+        "val_macro_auroc": va_pm["macro_auroc"],
+        "test_macro_auroc": te_pm["macro_auroc"],
+        "val_macro_auprc": va_pm["macro_auprc"],
+        "test_macro_auprc": te_pm["macro_auprc"],
+        "val_macro_ece": va_pm["macro_ece"],
+        "test_macro_ece": te_pm["macro_ece"],
+        "val_macro_brier": va_pm["macro_brier"],
+        "test_macro_brier": te_pm["macro_brier"],
+    }
     write_json(out_dir / "metrics.json", metrics)
+    write_json(
+        out_dir / "test_predictions.json",
+        {"probs": te_prob.cpu().tolist(), "y_true": data.te_y.tolist(), "y_mask": data.te_m.tolist()},
+    )
+    write_json(
+        out_dir / "val_predictions.json",
+        {"probs": va_prob.cpu().tolist(), "y_true": data.va_y.tolist(), "y_mask": data.va_m.tolist()},
+    )
     torch.save(model.state_dict(), out_dir / "best_checkpoint.pt")
-    update_run_registry(args.model_id or "qformer_adapter", args.protocol, out_dir, metrics, {})
+    update_run_registry(
+        model_id=args.model_id or "qformer_adapter",
+        protocol=args.protocol or "default",
+        run_dir=out_dir,
+        metrics={"val_macro_f1@0.5": float(best_f1), "test_macro_f1@0.5": float(te_f1)},
+        hparams={"epochs": args.epochs, "lr": args.lr, "num_queries": args.num_queries},
+    )
     print(metrics)
 
 
