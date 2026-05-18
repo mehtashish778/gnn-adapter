@@ -1,4 +1,5 @@
 # Concept-Evidence Adapter (CCA) — training pipeline reference
+# Results: docs/cca_experiment_results.md
 # Implementation: scripts/14_train_cca.py (core: scripts/cca_train_core.py)
 # Optuna HPO: scripts/tune_cca_optuna.py — see docs/cca_optuna_hpo.md
 
@@ -47,7 +48,20 @@ pipeline:
   cache:
     feature_cache_dir: data/processed/embeddings
     version: patch_v2_fp16
+    lora_version: patch_v2_fp16_lora_r{R}
+    lora_encoder_id: openai_clip-vit-base-patch16_lora_r{R}
     legacy_combined: --clip_cache_pt path/to/combined.pt
+
+# LoRA CLIP patches (vision-only); build with scripts/19_train_lora_clip_vision.py
+lora_patches:
+  lora_rank: 8
+  encoder_id: openai_clip-vit-base-patch16_lora_r8
+  cache_version: patch_v2_fp16_lora_r8
+  adapter_dir: data/processed/embeddings/lora_r8_adapter
+  # Train CCA on LoRA patches:
+  #   python scripts/14_train_cca.py --lora_rank 8 --run_id cca_lora_r8 --best_metric val_macro_f1_05 ...
+  # Encode missing test split only (after upgrading script 19):
+  #   python scripts/19_train_lora_clip_vision.py --lora_r 8 --encode_only
 
 # --- Default training (pre-Optuna baseline) ---
 defaults:
@@ -81,6 +95,10 @@ optuna_best_trial27:
     val_macro_f1@0.5: 0.701
     test_macro_f1@0.5: 0.691
     trainable_params: 118891
+  lora_r8_trial27_f1_ckpt:
+    val_macro_f1@0.5: 0.704
+    test_macro_f1@0.5: 0.701
+    run_id: cca_lora_r8_trial27
   artifacts:
     study: data/processed/experiments/cca/optuna/best_trial.json
 

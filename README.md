@@ -2,6 +2,10 @@
 
 Includes legacy GNN adapter baselines (gnn07/12/13) and the Concept-Evidence Adapter (CCA).
 
+**CCA experiment results (2026-05-17):** [`docs/cca_experiment_results.md`](docs/cca_experiment_results.md) — Optuna HPO, LoRA variants, multi-seed, faithfulness.
+
+**Reproduce CCA from scratch:** [`docs/cca_reproduction.md`](docs/cca_reproduction.md) — environment, patch caches, exact commands + full hyperparameter reference for every leaderboard run.
+
 **Paper-style reference (methods, protocols, citations, full result narrative):** [`docs/academic_report.md`](docs/academic_report.md). **Machine-readable summaries:** [`reports/comparison/overall.md`](reports/comparison/overall.md) and [`reports/comparison/overall.json`](reports/comparison/overall.json). **LaTeX/PDF:** `bash scripts/build_academic_report_pdf.sh` → [`docs/academic_report.tex`](docs/academic_report.tex) + [`docs/academic_report.pdf`](docs/academic_report.pdf) (Pandoc, **XeLaTeX** by default, `PDF_ENGINE=…` to override).
 
 The diagram below snapshots **macro-F1** aligned with **`repro_full_20260503`** in `overall.md`; if your splits, VLM shards, or `RUN_ID` differ, treat `metrics.json` and the packaged report as source of truth.

@@ -17,6 +17,18 @@ from common_multilabel import write_json
 PATCH_CACHE_VERSION = "patch_v2_fp16"
 
 
+def clip_encoder_id(clip_model: str) -> str:
+    return clip_model.replace("/", "_")
+
+
+def lora_patch_cache_keys(clip_model: str, lora_rank: int) -> tuple[str, str]:
+    """Return (encoder_id, cache_version) for LoRA-adapted ViT patch caches."""
+    return (
+        f"{clip_encoder_id(clip_model)}_lora_r{lora_rank}",
+        f"{PATCH_CACHE_VERSION}_lora_r{lora_rank}",
+    )
+
+
 def _hash_row_ids(row_ids: List[str]) -> str:
     payload = "\n".join(row_ids).encode("utf-8")
     return hashlib.sha256(payload).hexdigest()

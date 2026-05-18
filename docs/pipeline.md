@@ -115,10 +115,17 @@ Outputs:
 - `metrics.json`, `val_predictions.json`, `test_predictions.json`, `attention_maps.pt`
 - Patch cache: `data/processed/embeddings/*_patch_v2_fp16.pt`
 
+**Full results log:** [`docs/cca_experiment_results.md`](cca_experiment_results.md)  
+**Reproduction recipe + hyperparameter reference:** [`docs/cca_reproduction.md`](cca_reproduction.md)
+
 Documented runs (default protocol):
+- **`cca_lora_r8_trial27`** — best overall (test F1 @0.5 ≈ **0.701**, LoRA patches + trial-27)
+- `cca_frozen_trial27_f1` — frozen patches + trial-27 + F1 ckpt (test ≈ 0.694)
 - `run_20260516_183647` — default hparams (test F1 @0.5 ≈ 0.653)
-- `best_optuna_cca_hpo` — Optuna trial-27 hparams, 60-epoch final (test F1 @0.5 ≈ 0.658)
+- `cca_faithful` — default + faithfulness (test ≈ 0.674)
+- `best_optuna_cca_hpo` — Optuna trial-27 hparams, 60-epoch final, val_bce ckpt (test ≈ 0.658)
 - `data/processed/experiments/cca/optuna/best_trial.json` — best tuning trial (val F1 @0.5 ≈ 0.701)
+- LoRA variant table: [`reports/comparison/cca_lora_variants.md`](../reports/comparison/cca_lora_variants.md)
 
 ### Phase 4 baselines (same patch cache as CCA)
 | Script | model_id |

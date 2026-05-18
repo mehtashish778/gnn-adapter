@@ -45,7 +45,14 @@ from common_multilabel import (
     to_label_tensors,
     write_json,
 )
-from feature_cache import FeatureCache, PATCH_CACHE_VERSION, atomic_torch_save, clip_cache_dataset_id
+from feature_cache import (
+    FeatureCache,
+    PATCH_CACHE_VERSION,
+    atomic_torch_save,
+    clip_cache_dataset_id,
+    clip_encoder_id,
+    lora_patch_cache_keys,
+)
 from model_registry import resolve_experiment_dir, update_run_registry
 from faithfulness_metrics import (
     gate_density,
@@ -214,7 +221,7 @@ def load_split_patches(
 
     protocol = args.protocol or "default"
     dataset_id = f"{clip_cache_dataset_id(protocol)}_{split_name}"
-    encoder_id = args.clip_model.replace("/", "_")
+    encoder_id, cache_version = resolve_patch_cache_config(args)
 
     def compute():
         if clip_model is None or processor is None:
@@ -224,7 +231,7 @@ def load_split_patches(
     return feature_cache.get_or_compute(
         dataset_id=dataset_id,
         encoder_id=encoder_id,
-        version=PATCH_CACHE_VERSION,
+        version=cache_version,
         row_ids=row_ids(rows),
         compute_fn=compute,
         storage_dtype="float16",
@@ -266,6 +273,15 @@ class CCADataBundle:
     patch_dim: int
 
 
+def resolve_patch_cache_config(args: argparse.Namespace) -> Tuple[str, str]:
+    """Resolve FeatureCache encoder_id and version (frozen CLIP vs LoRA patches)."""
+    if getattr(args, "lora_rank", None) is not None:
+        return lora_patch_cache_keys(args.clip_model, args.lora_rank)
+    encoder_id = (args.patch_encoder_id or "").strip() or clip_encoder_id(args.clip_model)
+    cache_version = (args.patch_cache_version or "").strip() or PATCH_CACHE_VERSION
+    return encoder_id, cache_version
+
+
 def build_argparser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Train Concept-Evidence Adapter (CCA).")
     parser.add_argument("--train_rows_json", default="data/processed/splits/train_rows.json")
@@ -275,6 +291,23 @@ def build_argparser() -> argparse.ArgumentParser:
     parser.add_argument("--per_class_thresholds_json", default="data/processed/experiments/thresholds/per_class_thresholds.json")
     parser.add_argument("--image_root", default="data/raw")
     parser.add_argument("--clip_model", default="openai/clip-vit-base-patch16")
+    parser.add_argument(
+        "--lora_rank",
+        type=int,
+        default=None,
+        choices=[4, 8, 16],
+        help="Use LoRA patch cache for this rank (sets patch_encoder_id + patch_cache_version).",
+    )
+    parser.add_argument(
+        "--patch_encoder_id",
+        default="",
+        help="FeatureCache encoder_id override (default: clip model id, or LoRA suffix if --lora_rank).",
+    )
+    parser.add_argument(
+        "--patch_cache_version",
+        default="",
+        help="FeatureCache version override (default: patch_v2_fp16 or LoRA variant).",
+    )
     parser.add_argument("--clip_cache_pt", default="", help="Legacy combined patch cache .pt")
     parser.add_argument(
         "--embeddings_cache_dir",
@@ -337,7 +370,15 @@ def load_cca_data(args: argparse.Namespace, device: torch.device) -> CCADataBund
     calib_rows = load_rows(Path(args.calib_rows_json)) if args.calib_rows_json else None
     n_train, n_val, n_test = len(train_rows), len(val_rows), len(test_rows)
     n_calib = len(calib_rows) if calib_rows is not None else 0
-    print({"dataset_sizes": {"train": n_train, "val": n_val, "calib": n_calib, "test": n_test}, "variant": "cca"})
+    patch_encoder_id, patch_cache_version = resolve_patch_cache_config(args)
+    print(
+        {
+            "dataset_sizes": {"train": n_train, "val": n_val, "calib": n_calib, "test": n_test},
+            "variant": "cca",
+            "patch_encoder_id": patch_encoder_id,
+            "patch_cache_version": patch_cache_version,
+        }
+    )
 
     c = len(train_rows[0]["x_probs"])
     tr_logits, tr_probs, tr_y, tr_m = to_label_tensors(train_rows)
@@ -365,18 +406,39 @@ def load_cca_data(args: argparse.Namespace, device: torch.device) -> CCADataBund
         print("Patch cache model mismatch; re-encoding.")
         legacy_cache = None
 
+    using_lora_cache = patch_encoder_id != clip_encoder_id(args.clip_model)
+    if using_lora_cache and legacy_cache is not None:
+        raise RuntimeError(
+            "LoRA patch cache (--lora_rank or custom patch_encoder_id) cannot be used with --clip_cache_pt."
+        )
+
     need_encode = legacy_cache is None
+    missing_splits: List[str] = []
     if legacy_cache is None:
-        # Check if all FeatureCache splits exist
         for split_name, rows in [("train", train_rows), ("val", val_rows), ("test", test_rows)]:
             p = feature_cache.cache_path(
                 f"{clip_cache_dataset_id(args.protocol)}_{split_name}",
-                args.clip_model.replace("/", "_"),
-                PATCH_CACHE_VERSION,
+                patch_encoder_id,
+                patch_cache_version,
             )
             if not p.exists():
-                need_encode = True
-                break
+                missing_splits.append(split_name)
+        if calib_rows is not None:
+            p = feature_cache.cache_path(
+                f"{clip_cache_dataset_id(args.protocol)}_calib",
+                patch_encoder_id,
+                patch_cache_version,
+            )
+            if not p.exists():
+                missing_splits.append("calib")
+        need_encode = bool(missing_splits)
+
+    if need_encode and using_lora_cache:
+        raise RuntimeError(
+            f"Missing LoRA patch cache for split(s): {missing_splits}. "
+            f"Run: python scripts/19_train_lora_clip_vision.py --lora_r {args.lora_rank or '?'} "
+            f"(encoder_id={patch_encoder_id}, version={patch_cache_version})"
+        )
 
     if need_encode:
         n_total = len(train_rows) + len(val_rows) + len(test_rows) + (len(calib_rows) if calib_rows else 0)
@@ -783,11 +845,14 @@ def train_cca(
         masked_subset_accuracy(test_prob.to(device), te_y_d, te_m_d, threshold=thr_list) if thr_list else test_sub
     )
 
+    _patch_enc, _patch_ver = resolve_patch_cache_config(args)
     metrics_out: Dict[str, Any] = {
         "variant": "cca",
         "trainable_params": n_params,
         "dataset_sizes": {"train": n_train, "val": n_val, "calib": n_calib, "test": n_test},
         "clip_model": args.clip_model,
+        "patch_encoder_id": _patch_enc,
+        "patch_cache_version": _patch_ver,
         "best_metric": best_metric,
         "best_score": best["score"],
         "seed": args.seed,

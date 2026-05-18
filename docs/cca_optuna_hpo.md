@@ -1,5 +1,8 @@
 # CCA Optuna hyperparameter optimization
 
+**All experiment results:** [`docs/cca_experiment_results.md`](cca_experiment_results.md)  
+**Full reproduction recipe (env, data, every run, all hyperparameters):** [`docs/cca_reproduction.md`](cca_reproduction.md)
+
 This document records the first Optuna study for the Concept-Evidence Adapter (CCA) on the CheXpert **default** split (`train` / `val` / `test`). Implementation: `scripts/tune_cca_optuna.py` (training core: `scripts/cca_train_core.py`).
 
 ## How to run
@@ -139,6 +142,32 @@ After Optuna, the script retrains with best params for up to 60 epochs (`early_s
 | `data/processed/experiments/cca/optuna/final_metrics.json` | Final 60-epoch run metrics |
 | `data/processed/experiments/cca/default/best_optuna_cca_hpo/` | Checkpoint, predictions, history |
 | `data/processed/experiments/cca/default/run_20260516_183647/` | Pre-HPO default CCA run |
+
+## LoRA CLIP patches + CCA
+
+Build LoRA-adapted ViT patches (train/val/test):
+
+```powershell
+python scripts/19_train_lora_clip_vision.py --lora_r 8 --gpu_id 0
+```
+
+If train/val were cached earlier without test, add test only:
+
+```powershell
+python scripts/19_train_lora_clip_vision.py --lora_r 8 --gpu_id 0 --encode_only
+```
+
+Train CCA on LoRA patches (same hparams as frozen; fair comparison):
+
+```powershell
+python scripts/14_train_cca.py --model_id cca --protocol default --gpu_id 0 --num_workers 0 `
+  --lora_rank 8 --run_id cca_lora_r8_trial27 --best_metric val_macro_f1_05 `
+  --num_primitives 30 --query_dim 64 --n_cross_attn_layers 1 --n_self_attn_layers 2 `
+  --n_heads 4 --alpha 0.5 --dropout 0.1001 --lr 0.000479 --weight_decay 0.000111 `
+  --batch_size 8 --no-use-gate-M --init_queries_from_text
+```
+
+Frozen baseline uses default patch cache (`--lora_rank` omitted).
 
 ## Phase 2 faithfulness training
 
