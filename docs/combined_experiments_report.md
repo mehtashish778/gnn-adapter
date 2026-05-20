@@ -297,6 +297,29 @@ Trials with ≥ 1M trainable params or CUDA OOM were pruned.
 
 **Conclusion:** LoRA on CLIP vision (+7 F1 points over frozen at trial-27 scale) is the largest single encoder-side gain. The compact trial-27 head beats the 435K default architecture even with LoRA patches.
 
+### 7.1 LoRA on Qwen2-VL-2B-Instruct (r=16, PEFT baseline)
+
+**Scripts:** `scripts/train_qwen2vl_lora_cls.py`, `scripts/train_qwen2vl_lora_sft.py`, `scripts/run_lora16_vs_cca.py`  
+**Comparison table:** `reports/comparison/lora16_vs_cca.md` (generated after training)
+
+Two variants on CheXpert `default` (single seed 42):
+
+| Variant | Training | Inference |
+|---------|----------|-----------|
+| **cls head** | LoRA r=16 + `Linear(hidden, 7)` + masked BCE | Sigmoid logits (headline vs CCA) |
+| **JSON SFT** | LoRA r=16 + token CE on ground-truth JSON | Same prompt as frozen zero-shot VLM |
+
+**Status:** Implementation complete; fill metrics by running:
+
+```powershell
+$env:PYTHONPATH = "scripts"
+# If load fails with JSONDecodeError / SafetensorError, repair the HF cache first:
+python scripts/repair_qwen2vl_cache.py
+python scripts/run_lora16_vs_cca.py --gpu_id 0
+```
+
+Compare to CCA leaderboard (`cca_lora_r8_trial27`, 5-seed mean F1 **0.701 ± 0.005**). LoRA ranks 4/8/32 and cross-site evaluation remain pending.
+
 ---
 
 ## 8. Single-seed CCA runs (frozen patches)
@@ -513,7 +536,7 @@ From `scripts/stats_compare.py` → `reports/comparison/stats.md` (bootstrap 400
 |----------|------|--------|
 | **Encoder** | LoRA ranks 4, 16 on CLIP | Not trained |
 | **Encoder** | BiomedCLIP, RAD-DINO, MAE-CXR swap | Not run |
-| **VLM PEFT** | LoRA on Qwen2-VL {4,8,16,32} | Not run |
+| **VLM PEFT** | LoRA on Qwen2-VL r=16 (cls + JSON SFT) | **Scripts ready** — run `scripts/run_lora16_vs_cca.py`; ranks 4/8/32 not run |
 | **Protocol** | CCA on `calibrated4way` | Not run |
 | **Prior** | True MIMIC RadGraph entity graph | Stub only |
 | **Sites** | MIMIC, NIH, PadChest, VinDr cross-site | Not run |
@@ -597,6 +620,11 @@ python scripts/run_seeds.py --model_id cca --protocol default --seeds 0,1,2,3,4 
 | `scripts/20_holdout_concept.py` | Held-out primitive probe |
 | `scripts/15–18_train_*.py` | PostHoc CBM, label-free CBM, QFormer, MLGCN |
 | `scripts/19_train_lora_clip_vision.py` | LoRA CLIP patch cache |
+| `scripts/train_qwen2vl_lora_cls.py` | Qwen2-VL LoRA r=16 + classification head |
+| `scripts/train_qwen2vl_lora_sft.py` | Qwen2-VL LoRA r=16 + JSON generative SFT |
+| `scripts/score_qwen2vl_lora.py` | Re-score val/test for a LoRA run |
+| `scripts/run_lora16_vs_cca.py` | Train both LoRA variants + compare vs CCA |
+| `scripts/qwen2vl_lora_common.py` | Shared Qwen2-VL LoRA utilities |
 | `scripts/stats_compare.py` | Bootstrap / paired AUROC tables |
 | `scripts/faithfulness_metrics.py` | Faithfulness loss and eval metrics |
 
@@ -608,6 +636,7 @@ python scripts/run_seeds.py --model_id cca --protocol default --seeds 0,1,2,3,4 
 | `docs/cca_reproduction.md` | End-to-end reproduction |
 | `docs/pipeline.md` | Full pipeline map |
 | `reports/comparison/*.md` | Auto/manual comparison tables |
+| `reports/comparison/lora16_vs_cca.md` | LoRA-16 (Qwen2-VL) vs CCA table |
 
 ---
 

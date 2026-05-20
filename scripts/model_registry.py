@@ -66,6 +66,16 @@ MODEL_SPECS: Dict[str, ModelSpec] = {
         display_name="MLGCN",
         description="ML-GCN style label-graph message passing.",
     ),
+    "qwen2vl_lora_r16": ModelSpec(
+        model_id="qwen2vl_lora_r16",
+        display_name="Qwen2VLLoRA16Cls",
+        description="Qwen2-VL-2B-Instruct + LoRA r=16, classification head, masked BCE.",
+    ),
+    "qwen2vl_lora_r16_sft": ModelSpec(
+        model_id="qwen2vl_lora_r16_sft",
+        display_name="Qwen2VLLoRA16SFT",
+        description="Qwen2-VL-2B-Instruct + LoRA r=16, generative JSON SFT.",
+    ),
 }
 
 

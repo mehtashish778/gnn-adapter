@@ -139,6 +139,11 @@ Documented runs (default protocol):
 | `scripts/17_train_qformer_adapter.py` | `qformer_adapter` |
 | `scripts/18_train_mlgcn.py` | `mlgcn` |
 | `scripts/19_train_lora_clip_vision.py` | LoRA vision cache (`peft`) |
+| `scripts/train_qwen2vl_lora_cls.py` | Qwen2-VL LoRA r=16 + cls head |
+| `scripts/train_qwen2vl_lora_sft.py` | Qwen2-VL LoRA r=16 + JSON SFT |
+| `scripts/score_qwen2vl_lora.py` | Score LoRA run on val/test |
+| `scripts/run_lora16_vs_cca.py` | Train LoRA-16 + compare vs CCA |
+| `scripts/repair_qwen2vl_cache.py` | Fix incomplete/corrupt Qwen2-VL HF cache |
 | `scripts/20_holdout_concept.py` | held-out primitive ablation eval |
 
 Multi-seed stats: `scripts/run_seeds.py --use_numbered_script --stats_after` → `scripts/stats_compare.py`
