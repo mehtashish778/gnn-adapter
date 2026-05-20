@@ -331,10 +331,12 @@ def probabilistic_metrics(probs, y_true, y_mask, n_ece_bins: int = 15) -> dict:
             per_class.append({"auroc": float("nan"), "auprc": float("nan"), "ece": float("nan"), "brier": float("nan")})
             continue
         p = probs[m, i].astype(np.float64)
+        p = np.nan_to_num(p, nan=0.5, posinf=1.0, neginf=0.0)
+        p = np.clip(p, 0.0, 1.0)
         y = y_true[m, i].astype(np.float64)
         n_pos = float(y.sum())
         n_neg = float(len(y) - n_pos)
-        if roc_auc_score is not None and n_pos > 0 and n_neg > 0:
+        if roc_auc_score is not None and n_pos > 0 and n_neg > 0 and np.isfinite(p).all():
             auroc = float(roc_auc_score(y, p))
             auprc = float(average_precision_score(y, p))
         else:

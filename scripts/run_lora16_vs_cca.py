@@ -166,8 +166,20 @@ def main():
     parser.add_argument("--run_id_sft", default="qwen2vl_lora_r16_sft_default")
     parser.add_argument("--epochs_cls", type=int, default=3)
     parser.add_argument("--epochs_sft", type=int, default=1)
+    parser.add_argument("--lr_cls", type=float, default=2e-5, help="LoRA cls learning rate (was 1e-3 via argparse default).")
+    parser.add_argument("--max_train_samples_cls", type=int, default=0, help="Debug: cap cls train rows.")
     parser.add_argument("--max_train_samples_sft", type=int, default=0)
+    parser.add_argument("--smoke_test", action="store_true", help="500 train rows, 1 cls epoch, skip sft.")
     args = parser.parse_args()
+    max_val_cls = 0
+    max_test_cls = 0
+    if args.smoke_test:
+        args.max_train_samples_cls = max(args.max_train_samples_cls, 500)
+        max_val_cls = 500
+        max_test_cls = 500
+        args.epochs_cls = 1
+        args.skip_sft = True
+        args.run_id_cls = args.run_id_cls + "_smoke" if not args.run_id_cls.endswith("_smoke") else args.run_id_cls
 
     py = sys.executable
     cls_dir = _REPO / "data/processed/experiments/qwen2vl_lora_r16/default" / args.run_id_cls
@@ -177,28 +189,35 @@ def main():
 
     if not args.report_only:
         if not args.skip_train:
-            _run(
-                [
-                    py,
-                    str(_SCRIPTS / "train_qwen2vl_lora_cls.py"),
-                    "--model_id",
-                    "qwen2vl_lora_r16",
-                    "--protocol",
-                    "default",
-                    "--run_id",
-                    args.run_id_cls,
-                    "--gpu_id",
-                    str(args.gpu_id),
-                    "--seed",
-                    str(args.seed),
-                    "--epochs",
-                    str(args.epochs_cls),
-                    "--batch_size",
-                    "1",
-                    "--grad_accum",
-                    "16",
-                ]
-            )
+            cls_cmd = [
+                py,
+                str(_SCRIPTS / "train_qwen2vl_lora_cls.py"),
+                "--model_id",
+                "qwen2vl_lora_r16",
+                "--protocol",
+                "default",
+                "--run_id",
+                args.run_id_cls,
+                "--gpu_id",
+                str(args.gpu_id),
+                "--seed",
+                str(args.seed),
+                "--epochs",
+                str(args.epochs_cls),
+                "--batch_size",
+                "1",
+                "--grad_accum",
+                "16",
+                "--lr",
+                str(args.lr_cls),
+            ]
+            if args.max_train_samples_cls > 0:
+                cls_cmd.extend(["--max_train_samples", str(args.max_train_samples_cls)])
+            if max_val_cls > 0:
+                cls_cmd.extend(["--max_val_samples", str(max_val_cls)])
+            if max_test_cls > 0:
+                cls_cmd.extend(["--max_test_samples", str(max_test_cls)])
+            _run(cls_cmd)
         elif not (cls_dir / "test_predictions.json").exists():
             _run(
                 [
@@ -235,33 +254,43 @@ def main():
                 str(args.epochs_sft),
                 "--batch_size",
                 "1",
-                "--grad_accum",
-                "16",
+                    "--grad_accum",
+                    "16",
+                    "--lr",
+                    str(args.lr_cls),
             ]
             if args.max_train_samples_sft > 0:
                 sft_cmd.extend(["--max_train_samples", str(args.max_train_samples_sft)])
             _run(sft_cmd)
 
-    _run(
-        [
-            py,
-            str(_SCRIPTS / "stats_compare.py"),
-            "--repo",
-            str(_REPO),
-            "--protocol",
-            "default",
-            "--models",
-            "cca",
-            "qwen2vl_lora_r16",
-            "qwen2vl_lora_r16_sft",
-            "--reference",
-            "cca",
-            "--cca_seed_group",
-            "lora_r8_trial27",
-            "--out_md",
-            str(stats_md),
-        ]
-    )
+    if args.smoke_test:
+        print(
+            {
+                "skip_stats_compare": True,
+                "reason": "smoke uses capped val/test; stats_compare needs full paired splits",
+            }
+        )
+    else:
+        _run(
+            [
+                py,
+                str(_SCRIPTS / "stats_compare.py"),
+                "--repo",
+                str(_REPO),
+                "--protocol",
+                "default",
+                "--models",
+                "cca",
+                "qwen2vl_lora_r16",
+                "qwen2vl_lora_r16_sft",
+                "--reference",
+                "cca",
+                "--cca_seed_group",
+                "lora_r8_trial27",
+                "--out_md",
+                str(stats_md),
+            ]
+        )
 
     build_report(
         cca_ref_dir=_CCA_REF,

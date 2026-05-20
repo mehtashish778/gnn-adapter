@@ -315,7 +315,13 @@ Two variants on CheXpert `default` (single seed 42):
 $env:PYTHONPATH = "scripts"
 # If load fails with JSONDecodeError / SafetensorError, repair the HF cache first:
 python scripts/repair_qwen2vl_cache.py
+# Quick sanity check (~30 min): finite loss + val F1 > 0
+python scripts/run_lora16_vs_cca.py --gpu_id 0 --smoke_test
+# Full cls + sft (many hours):
 python scripts/run_lora16_vs_cca.py --gpu_id 0
+```
+
+**Cls stability fixes (2026-05-20):** default LoRA LR `2e-5` (was `1e-3`), fp32 head + BCE, grad clip 1.0, gradient checkpointing off by default, NaN-safe metrics. Use a **new** `--run_id` (e.g. `qwen2vl_lora_r16_v2`) — do not reuse the broken `qwen2vl_lora_r16_default` run.
 ```
 
 Compare to CCA leaderboard (`cca_lora_r8_trial27`, 5-seed mean F1 **0.701 ± 0.005**). LoRA ranks 4/8/32 and cross-site evaluation remain pending.

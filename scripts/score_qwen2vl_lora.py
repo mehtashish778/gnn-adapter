@@ -47,7 +47,7 @@ class Qwen2VLClassifier(nn.Module):
     def __init__(self, backbone: nn.Module, hidden_size: int, num_labels: int):
         super().__init__()
         self.backbone = backbone
-        self.head = nn.Linear(hidden_size, num_labels)
+        self.head = nn.Linear(hidden_size, num_labels, dtype=torch.float32)
 
     def forward(self, inputs: dict) -> torch.Tensor:
         pooled = pool_last_token_hidden(self.backbone, inputs)
@@ -76,9 +76,9 @@ def score_cls(model, head, processor, rows, image_root, device, batch_size):
                 ]
                 inputs = processor(text=texts, images=images, return_tensors="pt", padding=True)
                 inputs = {k: v.to(device) if hasattr(v, "to") else v for k, v in inputs.items()}
-            pooled = pool_last_token_hidden(model, inputs).to(dtype=head.weight.dtype)
-            logits = head(pooled)
-            probs_chunks.append(torch.sigmoid(logits.float()).cpu())
+            logits = head(pool_last_token_hidden(model, inputs))
+            probs = torch.nan_to_num(torch.sigmoid(logits.float()), nan=0.5).clamp(0.0, 1.0)
+            probs_chunks.append(probs.cpu())
     return torch.cat(probs_chunks, dim=0)
 
 
@@ -164,8 +164,7 @@ def main():
             raise FileNotFoundError(f"Missing {head_path} for cls mode")
         hidden_size = backbone.config.hidden_size
         num_labels = len(val_rows[0]["y_true"])
-        head_dtype = next(backbone.parameters()).dtype
-        head = nn.Linear(hidden_size, num_labels).to(device=device, dtype=head_dtype)
+        head = nn.Linear(hidden_size, num_labels, dtype=torch.float32).to(device=device)
         head.load_state_dict(torch.load(head_path, map_location=device))
         val_prob = score_cls(backbone, head, processor, val_rows, image_root, device, args.batch_size)
         test_prob = score_cls(backbone, head, processor, test_rows, image_root, device, args.batch_size)

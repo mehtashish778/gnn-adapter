@@ -106,6 +106,7 @@ def generate_probs(model, processor, rows, image_root, device, batch_size: int =
 
 def main():
     parser = build_standard_argparser("Train Qwen2-VL LoRA r=16 with generative JSON SFT.")
+    parser.set_defaults(lr=2e-5, epochs=1)
     parser.add_argument("--model_path", default=str(DEFAULT_MODEL_ROOT))
     parser.add_argument("--lora_rank", type=int, default=16)
     parser.add_argument("--image_root", default="data/raw")
@@ -113,6 +114,8 @@ def main():
     parser.add_argument("--grad_accum", type=int, default=16)
     parser.add_argument("--max_train_samples", type=int, default=0, help="0 = all rows (debug with small N).")
     parser.add_argument("--eval_every", type=int, default=500, help="Val loss check every N optimizer steps.")
+    parser.add_argument("--grad_clip_norm", type=float, default=1.0)
+    parser.add_argument("--gradient_checkpointing", action="store_true")
     parser.add_argument(
         "--no_download",
         action="store_true",
@@ -140,7 +143,12 @@ def main():
         allow_download=not args.no_download,
     )
     processor = load_processor(model_dir, local_files_only=True)
-    model = load_base_qwen_model(model_dir, device, local_files_only=True)
+    model = load_base_qwen_model(
+        model_dir,
+        device,
+        local_files_only=True,
+        gradient_checkpointing=args.gradient_checkpointing,
+    )
     model = apply_lora(model, rank=args.lora_rank, causal_lm=True)
     model.train()
 
@@ -176,11 +184,19 @@ def main():
             batch, _ = build_sft_batch(processor, batch_rows, image_root, device)
             outputs = model(**batch)
             loss = outputs.loss / args.grad_accum
+            if not torch.isfinite(loss):
+                opt.zero_grad()
+                accum = 0
+                continue
             loss.backward()
             accum += 1
             epoch_loss += float(loss.item()) * args.grad_accum
             n_batches += 1
             if accum >= args.grad_accum:
+                torch.nn.utils.clip_grad_norm_(
+                    [p for p in model.parameters() if p.requires_grad],
+                    args.grad_clip_norm,
+                )
                 opt.step()
                 opt.zero_grad()
                 accum = 0
@@ -227,7 +243,7 @@ def main():
 
     from peft import PeftModel
 
-    base_reload = load_base_qwen_model(model_dir, device)
+    base_reload = load_base_qwen_model(model_dir, device, gradient_checkpointing=False)
     model = PeftModel.from_pretrained(base_reload, str(adapter_dir)).to(device)
     model.eval()
 

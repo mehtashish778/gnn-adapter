@@ -272,6 +272,7 @@ def load_base_qwen_model(
     dtype=None,
     *,
     local_files_only: bool = True,
+    gradient_checkpointing: bool = False,
 ):
     import torch
     from transformers import Qwen2VLForConditionalGeneration
@@ -287,8 +288,10 @@ def load_base_qwen_model(
         torch_dtype=dtype,
         local_files_only=local_files_only,
     )
-    if hasattr(model, "gradient_checkpointing_enable"):
+    if gradient_checkpointing and hasattr(model, "gradient_checkpointing_enable"):
         model.gradient_checkpointing_enable()
+        if hasattr(model, "enable_input_require_grads"):
+            model.enable_input_require_grads()
     return model.to(device)
 
 
@@ -333,7 +336,7 @@ def pool_last_token_hidden(model, inputs: dict) -> "torch.Tensor":
         output_hidden_states=True,
         return_dict=True,
     )
-    hidden = out.hidden_states[-1]
+    hidden = out.hidden_states[-1].float()
     attn = inputs.get("attention_mask")
     if attn is None:
         return hidden[:, -1, :]
