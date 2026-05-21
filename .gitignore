@@ -19,7 +19,6 @@ __pycache__/
 
 # Large data and generated artifacts
 data/
-reports/
 
 # Model checkpoints and experiment outputs
 *.pt

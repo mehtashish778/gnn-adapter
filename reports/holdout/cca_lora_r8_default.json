@@ -1,0 +1,514 @@
+{
+  "checkpoint": "data/processed/experiments/cca/default/cca_lora_r8_default/best_checkpoint.pt",
+  "use_gate_M": true,
+  "num_primitives": 30,
+  "full": {
+    "val_macro_f1@0.5": 0.6835886836051941,
+    "val_macro_auroc": 0.6198681860768572,
+    "val_macro_auprc": 0.5545762031648835,
+    "val_macro_brier": 0.19019394694612807
+  },
+  "max_drop_auroc": 0.00022396576917582678,
+  "mean_drop_auroc": 5.999199630920919e-05,
+  "max_drop_f1": 0.0006176233291625977,
+  "p_with_max_drop_auroc": 5,
+  "top5_by_auroc_drop": [
+    {
+      "p": 5,
+      "drops": {
+        "drop_macro_f1@0.5": 0.0005884766578674316,
+        "drop_macro_auroc": 0.00022396576917582678,
+        "drop_macro_auprc": 0.00016525067478767586,
+        "drop_macro_brier": -0.00020109702241033478
+      }
+    },
+    {
+      "p": 15,
+      "drops": {
+        "drop_macro_f1@0.5": 0.0006176233291625977,
+        "drop_macro_auroc": 0.00016870916768296773,
+        "drop_macro_auprc": 0.00019030176265044663,
+        "drop_macro_brier": -0.00019505612253137294
+      }
+    },
+    {
+      "p": 7,
+      "drops": {
+        "drop_macro_f1@0.5": 0.0006176233291625977,
+        "drop_macro_auroc": 0.00016055660716918219,
+        "drop_macro_auprc": 0.00016367741078349152,
+        "drop_macro_brier": -0.00019578108205306477
+      }
+    },
+    {
+      "p": 4,
+      "drops": {
+        "drop_macro_f1@0.5": 1.5676021575927734e-05,
+        "drop_macro_auroc": 0.00014933440329278902,
+        "drop_macro_auprc": 0.000196229295965078,
+        "drop_macro_brier": -3.3255105559848452e-06
+      }
+    },
+    {
+      "p": 9,
+      "drops": {
+        "drop_macro_f1@0.5": 1.5676021575927734e-05,
+        "drop_macro_auroc": 0.00013513443787749324,
+        "drop_macro_auprc": 0.0001833527598981144,
+        "drop_macro_brier": -1.6509386703389417e-05
+      }
+    }
+  ],
+  "per_primitive": [
+    {
+      "p": 5,
+      "holdout": {
+        "val_macro_f1@0.5": 0.6830002069473267,
+        "val_macro_auroc": 0.6196442203076814,
+        "val_macro_auprc": 0.5544109524900959,
+        "val_macro_brier": 0.1903950439685384
+      },
+      "drops": {
+        "drop_macro_f1@0.5": 0.0005884766578674316,
+        "drop_macro_auroc": 0.00022396576917582678,
+        "drop_macro_auprc": 0.00016525067478767586,
+        "drop_macro_brier": -0.00020109702241033478
+      }
+    },
+    {
+      "p": 15,
+      "holdout": {
+        "val_macro_f1@0.5": 0.6829710602760315,
+        "val_macro_auroc": 0.6196994769091743,
+        "val_macro_auprc": 0.5543859014022331,
+        "val_macro_brier": 0.19038900306865944
+      },
+      "drops": {
+        "drop_macro_f1@0.5": 0.0006176233291625977,
+        "drop_macro_auroc": 0.00016870916768296773,
+        "drop_macro_auprc": 0.00019030176265044663,
+        "drop_macro_brier": -0.00019505612253137294
+      }
+    },
+    {
+      "p": 7,
+      "holdout": {
+        "val_macro_f1@0.5": 0.6829710602760315,
+        "val_macro_auroc": 0.619707629469688,
+        "val_macro_auprc": 0.5544125257541,
+        "val_macro_brier": 0.19038972802818113
+      },
+      "drops": {
+        "drop_macro_f1@0.5": 0.0006176233291625977,
+        "drop_macro_auroc": 0.00016055660716918219,
+        "drop_macro_auprc": 0.00016367741078349152,
+        "drop_macro_brier": -0.00019578108205306477
+      }
+    },
+    {
+      "p": 4,
+      "holdout": {
+        "val_macro_f1@0.5": 0.6835730075836182,
+        "val_macro_auroc": 0.6197188516735644,
+        "val_macro_auprc": 0.5543799738689185,
+        "val_macro_brier": 0.19019727245668405
+      },
+      "drops": {
+        "drop_macro_f1@0.5": 1.5676021575927734e-05,
+        "drop_macro_auroc": 0.00014933440329278902,
+        "drop_macro_auprc": 0.000196229295965078,
+        "drop_macro_brier": -3.3255105559848452e-06
+      }
+    },
+    {
+      "p": 9,
+      "holdout": {
+        "val_macro_f1@0.5": 0.6835730075836182,
+        "val_macro_auroc": 0.6197330516389797,
+        "val_macro_auprc": 0.5543928504049854,
+        "val_macro_brier": 0.19021045633283146
+      },
+      "drops": {
+        "drop_macro_f1@0.5": 1.5676021575927734e-05,
+        "drop_macro_auroc": 0.00013513443787749324,
+        "drop_macro_auprc": 0.0001833527598981144,
+        "drop_macro_brier": -1.6509386703389417e-05
+      }
+    },
+    {
+      "p": 16,
+      "holdout": {
+        "val_macro_f1@0.5": 0.6830568909645081,
+        "val_macro_auroc": 0.6197356207631293,
+        "val_macro_auprc": 0.5545480502981975,
+        "val_macro_brier": 0.19035405371565875
+      },
+      "drops": {
+        "drop_macro_f1@0.5": 0.0005317926406860352,
+        "drop_macro_auroc": 0.00013256531372796143,
+        "drop_macro_auprc": 2.8152866686004252e-05,
+        "drop_macro_brier": -0.00016010676953068237
+      }
+    },
+    {
+      "p": 8,
+      "holdout": {
+        "val_macro_f1@0.5": 0.6830340027809143,
+        "val_macro_auroc": 0.6197636180363427,
+        "val_macro_auprc": 0.5545525619623501,
+        "val_macro_brier": 0.190330682839726
+      },
+      "drops": {
+        "drop_macro_f1@0.5": 0.0005546808242797852,
+        "drop_macro_auroc": 0.00010456804051450774,
+        "drop_macro_auprc": 2.364120253339763e-05,
+        "drop_macro_brier": -0.00013673589359794458
+      }
+    },
+    {
+      "p": 18,
+      "holdout": {
+        "val_macro_f1@0.5": 0.6836297512054443,
+        "val_macro_auroc": 0.6197682756179589,
+        "val_macro_auprc": 0.5544236830562547,
+        "val_macro_brier": 0.1902028210082132
+      },
+      "drops": {
+        "drop_macro_f1@0.5": -4.106760025024414e-05,
+        "drop_macro_auroc": 9.99104588983446e-05,
+        "drop_macro_auprc": 0.000152520108628873,
+        "drop_macro_brier": -8.874062085134637e-06
+      }
+    },
+    {
+      "p": 22,
+      "holdout": {
+        "val_macro_f1@0.5": 0.6835730075836182,
+        "val_macro_auroc": 0.6197777488912749,
+        "val_macro_auprc": 0.5543382776617223,
+        "val_macro_brier": 0.1902010549864718
+      },
+      "drops": {
+        "drop_macro_f1@0.5": 1.5676021575927734e-05,
+        "drop_macro_auroc": 9.043718558232605e-05,
+        "drop_macro_auprc": 0.0002379255031612626,
+        "drop_macro_brier": -7.108040343734023e-06
+      }
+    },
+    {
+      "p": 26,
+      "holdout": {
+        "val_macro_f1@0.5": 0.6836297512054443,
+        "val_macro_auroc": 0.6197902543953746,
+        "val_macro_auprc": 0.5543575433196016,
+        "val_macro_brier": 0.19019056538286735
+      },
+      "drops": {
+        "drop_macro_f1@0.5": -4.106760025024414e-05,
+        "drop_macro_auroc": 7.793168148262364e-05,
+        "drop_macro_auprc": 0.00021865984528190996,
+        "drop_macro_brier": 3.3815632607125945e-06
+      }
+    },
+    {
+      "p": 20,
+      "holdout": {
+        "val_macro_f1@0.5": 0.6835471391677856,
+        "val_macro_auroc": 0.6197978115380879,
+        "val_macro_auprc": 0.5544336001149275,
+        "val_macro_brier": 0.1901972771231908
+      },
+      "drops": {
+        "drop_macro_f1@0.5": 4.1544437408447266e-05,
+        "drop_macro_auroc": 7.037453876934663e-05,
+        "drop_macro_auprc": 0.00014260304995605821,
+        "drop_macro_brier": -3.330177062721429e-06
+      }
+    },
+    {
+      "p": 1,
+      "holdout": {
+        "val_macro_f1@0.5": 0.6836297512054443,
+        "val_macro_auroc": 0.6197979871057119,
+        "val_macro_auprc": 0.5544184962986074,
+        "val_macro_brier": 0.19018047088291976
+      },
+      "drops": {
+        "drop_macro_f1@0.5": -4.106760025024414e-05,
+        "drop_macro_auroc": 7.019897114535212e-05,
+        "drop_macro_auprc": 0.0001577068662761416,
+        "drop_macro_brier": 1.3476063208311961e-05
+      }
+    },
+    {
+      "p": 19,
+      "holdout": {
+        "val_macro_f1@0.5": 0.6836297512054443,
+        "val_macro_auroc": 0.6197987188070204,
+        "val_macro_auprc": 0.5544480624236231,
+        "val_macro_brier": 0.19018888175796106
+      },
+      "drops": {
+        "drop_macro_f1@0.5": -4.106760025024414e-05,
+        "drop_macro_auroc": 6.946726983680929e-05,
+        "drop_macro_auprc": 0.00012814074126044073,
+        "drop_macro_brier": 5.065188167008294e-06
+      }
+    },
+    {
+      "p": 14,
+      "holdout": {
+        "val_macro_f1@0.5": 0.6836866736412048,
+        "val_macro_auroc": 0.6197989470842727,
+        "val_macro_auprc": 0.5544353214841856,
+        "val_macro_brier": 0.1901769566813727
+      },
+      "drops": {
+        "drop_macro_f1@0.5": -9.799003601074219e-05,
+        "drop_macro_auroc": 6.923899258448607e-05,
+        "drop_macro_auprc": 0.00014088168069792406,
+        "drop_macro_brier": 1.6990264755378792e-05
+      }
+    },
+    {
+      "p": 0,
+      "holdout": {
+        "val_macro_f1@0.5": 0.6836297512054443,
+        "val_macro_auroc": 0.6198020412009502,
+        "val_macro_auprc": 0.5544567295505172,
+        "val_macro_brier": 0.19019044796632503
+      },
+      "drops": {
+        "drop_macro_f1@0.5": -4.106760025024414e-05,
+        "drop_macro_auroc": 6.614487590705931e-05,
+        "drop_macro_auprc": 0.00011947361436637216,
+        "drop_macro_brier": 3.4989798030349295e-06
+      }
+    },
+    {
+      "p": 28,
+      "holdout": {
+        "val_macro_f1@0.5": 0.6831643581390381,
+        "val_macro_auroc": 0.6198026293083262,
+        "val_macro_auprc": 0.5544229965885517,
+        "val_macro_brier": 0.19036571360037202
+      },
+      "drops": {
+        "drop_macro_f1@0.5": 0.00042432546615600586,
+        "drop_macro_auroc": 6.555676853103876e-05,
+        "drop_macro_auprc": 0.00015320657633188794,
+        "drop_macro_brier": -0.00017176665424395443
+      }
+    },
+    {
+      "p": 6,
+      "holdout": {
+        "val_macro_f1@0.5": 0.6836866736412048,
+        "val_macro_auroc": 0.6198044500671361,
+        "val_macro_auprc": 0.5544449636224521,
+        "val_macro_brier": 0.19017447504766105
+      },
+      "drops": {
+        "drop_macro_f1@0.5": -9.799003601074219e-05,
+        "drop_macro_auroc": 6.373600972109372e-05,
+        "drop_macro_auprc": 0.00013123954243143832,
+        "drop_macro_brier": 1.9471898467016135e-05
+      }
+    },
+    {
+      "p": 11,
+      "holdout": {
+        "val_macro_f1@0.5": 0.6836297512054443,
+        "val_macro_auroc": 0.6198165239360933,
+        "val_macro_auprc": 0.5544675763000215,
+        "val_macro_brier": 0.19017532288918146
+      },
+      "drops": {
+        "drop_macro_f1@0.5": -4.106760025024414e-05,
+        "drop_macro_auroc": 5.1662140763908404e-05,
+        "drop_macro_auprc": 0.00010862686486201589,
+        "drop_macro_brier": 1.8624056946608958e-05
+      }
+    },
+    {
+      "p": 10,
+      "holdout": {
+        "val_macro_f1@0.5": 0.6836297512054443,
+        "val_macro_auroc": 0.6198251592780163,
+        "val_macro_auprc": 0.5544142641041097,
+        "val_macro_brier": 0.19018780171740027
+      },
+      "drops": {
+        "drop_macro_f1@0.5": -4.106760025024414e-05,
+        "drop_macro_auroc": 4.3026798840939406e-05,
+        "drop_macro_auprc": 0.00016193906077388576,
+        "drop_macro_brier": 6.1452287277996565e-06
+      }
+    },
+    {
+      "p": 27,
+      "holdout": {
+        "val_macro_f1@0.5": 0.6836866736412048,
+        "val_macro_auroc": 0.6198318568114536,
+        "val_macro_auprc": 0.554452098660686,
+        "val_macro_brier": 0.19017501491851102
+      },
+      "drops": {
+        "drop_macro_f1@0.5": -9.799003601074219e-05,
+        "drop_macro_auroc": 3.632926540364512e-05,
+        "drop_macro_auprc": 0.00012410450419753083,
+        "drop_macro_brier": 1.893202761704682e-05
+      }
+    },
+    {
+      "p": 17,
+      "holdout": {
+        "val_macro_f1@0.5": 0.6836297512054443,
+        "val_macro_auroc": 0.6198338791328025,
+        "val_macro_auprc": 0.5544113783908134,
+        "val_macro_brier": 0.1901794864872895
+      },
+      "drops": {
+        "drop_macro_f1@0.5": -4.106760025024414e-05,
+        "drop_macro_auroc": 3.4306944054707245e-05,
+        "drop_macro_auprc": 0.00016482477407009366,
+        "drop_macro_brier": 1.4460458838572166e-05
+      }
+    },
+    {
+      "p": 25,
+      "holdout": {
+        "val_macro_f1@0.5": 0.6836297512054443,
+        "val_macro_auroc": 0.6198363207516709,
+        "val_macro_auprc": 0.5544172500091221,
+        "val_macro_brier": 0.19017382424347867
+      },
+      "drops": {
+        "drop_macro_f1@0.5": -4.106760025024414e-05,
+        "drop_macro_auroc": 3.18653251862866e-05,
+        "drop_macro_auprc": 0.000158953155761421,
+        "drop_macro_brier": 2.012270264939442e-05
+      }
+    },
+    {
+      "p": 23,
+      "holdout": {
+        "val_macro_f1@0.5": 0.6836297512054443,
+        "val_macro_auroc": 0.6198438970378118,
+        "val_macro_auprc": 0.5544178782509198,
+        "val_macro_brier": 0.19018217509594426
+      },
+      "drops": {
+        "drop_macro_f1@0.5": -4.106760025024414e-05,
+        "drop_macro_auroc": 2.4289039045388705e-05,
+        "drop_macro_auprc": 0.0001583249139637255,
+        "drop_macro_brier": 1.1771850183805999e-05
+      }
+    },
+    {
+      "p": 24,
+      "holdout": {
+        "val_macro_f1@0.5": 0.6836866736412048,
+        "val_macro_auroc": 0.6198475683152052,
+        "val_macro_auprc": 0.5544045956419558,
+        "val_macro_brier": 0.19016832317353455
+      },
+      "drops": {
+        "drop_macro_f1@0.5": -9.799003601074219e-05,
+        "drop_macro_auroc": 2.0617761652075295e-05,
+        "drop_macro_auprc": 0.0001716075229277747,
+        "drop_macro_brier": 2.5623772593519334e-05
+      }
+    },
+    {
+      "p": 2,
+      "holdout": {
+        "val_macro_f1@0.5": 0.6836297512054443,
+        "val_macro_auroc": 0.6198498685344177,
+        "val_macro_auprc": 0.5544026391758058,
+        "val_macro_brier": 0.1901717212688129
+      },
+      "drops": {
+        "drop_macro_f1@0.5": -4.106760025024414e-05,
+        "drop_macro_auroc": 1.8317542439527656e-05,
+        "drop_macro_auprc": 0.00017356398907775183,
+        "drop_macro_brier": 2.2225677315163006e-05
+      }
+    },
+    {
+      "p": 29,
+      "holdout": {
+        "val_macro_f1@0.5": 0.6836297512054443,
+        "val_macro_auroc": 0.6198623725355084,
+        "val_macro_auprc": 0.5543975821853283,
+        "val_macro_brier": 0.19017595475804558
+      },
+      "drops": {
+        "drop_macro_f1@0.5": -4.106760025024414e-05,
+        "drop_macro_auroc": 5.813541348875795e-06,
+        "drop_macro_auprc": 0.00017862097955523293,
+        "drop_macro_brier": 1.799218808248848e-05
+      }
+    },
+    {
+      "p": 12,
+      "holdout": {
+        "val_macro_f1@0.5": 0.6834839582443237,
+        "val_macro_auroc": 0.6199188832041062,
+        "val_macro_auprc": 0.5545467568123982,
+        "val_macro_brier": 0.19014250047684733
+      },
+      "drops": {
+        "drop_macro_f1@0.5": 0.00010472536087036133,
+        "drop_macro_auroc": -5.069712724892206e-05,
+        "drop_macro_auprc": 2.944635248536276e-05,
+        "drop_macro_brier": 5.144646928073593e-05
+      }
+    },
+    {
+      "p": 13,
+      "holdout": {
+        "val_macro_f1@0.5": 0.6832545399665833,
+        "val_macro_auroc": 0.619936401049954,
+        "val_macro_auprc": 0.55445053285206,
+        "val_macro_brier": 0.1903231115530628
+      },
+      "drops": {
+        "drop_macro_f1@0.5": 0.00033414363861083984,
+        "drop_macro_auroc": -6.82149730967252e-05,
+        "drop_macro_auprc": 0.0001256703128235115,
+        "drop_macro_brier": -0.00012916460693473963
+      }
+    },
+    {
+      "p": 21,
+      "holdout": {
+        "val_macro_f1@0.5": 0.6832545399665833,
+        "val_macro_auroc": 0.6199485158881828,
+        "val_macro_auprc": 0.5544622355104504,
+        "val_macro_brier": 0.19032045949461204
+      },
+      "drops": {
+        "drop_macro_f1@0.5": 0.00033414363861083984,
+        "drop_macro_auroc": -8.032981132555239e-05,
+        "drop_macro_auprc": 0.00011396765443316692,
+        "drop_macro_brier": -0.00012651254848397575
+      }
+    },
+    {
+      "p": 3,
+      "holdout": {
+        "val_macro_f1@0.5": 0.6833011507987976,
+        "val_macro_auroc": 0.6199532431265443,
+        "val_macro_auprc": 0.5544985692606784,
+        "val_macro_brier": 0.19029607622288433
+      },
+      "drops": {
+        "drop_macro_f1@0.5": 0.0002875328063964844,
+        "drop_macro_auroc": -8.505704968708727e-05,
+        "drop_macro_auprc": 7.763390420512106e-05,
+        "drop_macro_brier": -0.00010212927675626315
+      }
+    }
+  ]
+}
