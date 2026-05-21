@@ -52,6 +52,8 @@ def main():
     parser.add_argument("--batch_size", type=int, default=1)
     parser.add_argument("--grad_accum", type=int, default=16)
     parser.add_argument("--max_train_samples", type=int, default=0, help="0 = all rows (debug with small N).")
+    parser.add_argument("--max_val_samples", type=int, default=0, help="0 = full val (cap for smoke/debug).")
+    parser.add_argument("--max_test_samples", type=int, default=0, help="0 = full test (cap for smoke/debug).")
     parser.add_argument("--eval_every", type=int, default=500, help="Val loss check every N optimizer steps.")
     parser.add_argument("--grad_clip_norm", type=float, default=1.0)
     parser.add_argument("--gradient_checkpointing", action="store_true")
@@ -76,6 +78,10 @@ def main():
     test_rows = load_rows(Path(args.test_rows_json))
     if args.max_train_samples > 0:
         train_rows = train_rows[: args.max_train_samples]
+    if args.max_val_samples > 0:
+        val_rows = val_rows[: args.max_val_samples]
+    if args.max_test_samples > 0:
+        test_rows = test_rows[: args.max_test_samples]
 
     model_dir = ensure_model_snapshot(
         Path(args.model_path),
