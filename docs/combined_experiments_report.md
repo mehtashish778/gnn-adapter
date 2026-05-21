@@ -322,6 +322,8 @@ python scripts/run_lora16_vs_cca.py --gpu_id 0
 ```
 
 **Cls stability fixes (2026-05-20):** default LoRA LR `2e-5` (was `1e-3`), fp32 head + BCE, grad clip 1.0, gradient checkpointing off by default, NaN-safe metrics. Use a **new** `--run_id` (e.g. `qwen2vl_lora_r16_v2`) — do not reuse the broken `qwen2vl_lora_r16_default` run.
+
+**SFT fixes (2026-05-20):** multimodal label mask uses `processor(text, images=...)` prefix length (not text-only tokens); generation decodes **new tokens only**; adapter saved at **end of each epoch** (not step-500 val-loss only). Re-run SFT with a new `--run_id` after pulling these changes.
 ```
 
 Compare to CCA leaderboard (`cca_lora_r8_trial27`, 5-seed mean F1 **0.701 ± 0.005**). LoRA ranks 4/8/32 and cross-site evaluation remain pending.

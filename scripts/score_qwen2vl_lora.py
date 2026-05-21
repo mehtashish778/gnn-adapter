@@ -30,10 +30,8 @@ from model_registry import resolve_experiment_dir, update_run_registry
 from qwen2vl_lora_common import (
     CLS_PROMPT,
     DEFAULT_MODEL_ROOT,
-    JSON_PROMPT,
-    VLM_LABELS,
     build_user_messages,
-    extract_json_dict,
+    generate_probs_from_rows,
     load_lora_model,
     load_processor,
     open_image,
@@ -83,24 +81,8 @@ def score_cls(model, head, processor, rows, image_root, device, batch_size):
 
 
 def score_gen(model, processor, rows, image_root, device, batch_size):
-    model.eval()
-    probs_list = []
-    parse_failures = 0
     with torch.no_grad():
-        for row in rows:
-            img = open_image(image_root, row)
-            msgs = build_user_messages(img, JSON_PROMPT)
-            text = processor.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True)
-            inputs = processor(text=[text], images=[img], return_tensors="pt").to(device)
-            out_ids = model.generate(**inputs, max_new_tokens=192, do_sample=False)
-            decoded = processor.batch_decode(out_ids, skip_special_tokens=True)[0]
-            try:
-                d = extract_json_dict(decoded)
-                probs_list.append([d[lbl] for lbl in VLM_LABELS])
-            except (ValueError, json.JSONDecodeError):
-                parse_failures += 1
-                probs_list.append([0.5] * len(VLM_LABELS))
-    return torch.tensor(probs_list, dtype=torch.float32), parse_failures
+        return generate_probs_from_rows(model, processor, rows, image_root, device, batch_size)
 
 
 def main():

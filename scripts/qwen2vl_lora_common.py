@@ -222,11 +222,95 @@ def extract_json_dict(text: str) -> Dict[str, float]:
 
 
 def target_json_from_row(row: dict) -> str:
-    """Ground-truth JSON for SFT: y_true as 0/1 floats; mask=0 -> 0.0."""
+    """Ground-truth JSON for SFT: supervised labels as 0/1; mask=0 -> 0.0."""
     y = row["y_true"]
     m = row["y_mask"]
     payload = {lbl: float(y[i]) if m[i] else 0.0 for i, lbl in enumerate(VLM_LABELS)}
     return json.dumps(payload, separators=(",", ": "))
+
+
+def build_sft_batch(processor, rows: Sequence[dict], image_root: Path, device) -> Tuple[dict, List[Image.Image]]:
+    """
+    Build a causal-LM SFT batch with labels masked on the user+vision prefix only.
+
+    Prompt length must come from processor(text, images=...) — not text-only tokenization —
+    so vision tokens are included in the masked prefix.
+    """
+    images = [open_image(image_root, r) for r in rows]
+    full_texts: List[str] = []
+    prompt_lens: List[int] = []
+    for img, row in zip(images, rows):
+        target = target_json_from_row(row)
+        user_msgs = build_user_messages(img, JSON_PROMPT)
+        conv = user_msgs + [{"role": "assistant", "content": target}]
+        full_texts.append(processor.apply_chat_template(conv, tokenize=False))
+        prompt_text = processor.apply_chat_template(
+            user_msgs, tokenize=False, add_generation_prompt=True
+        )
+        prompt_inputs = processor(text=[prompt_text], images=[img], return_tensors="pt")
+        prompt_lens.append(int(prompt_inputs["input_ids"].shape[1]))
+
+    if len(rows) == 1:
+        batch = processor(text=[full_texts[0]], images=[images[0]], return_tensors="pt", padding=True)
+    else:
+        batch = processor(text=full_texts, images=images, return_tensors="pt", padding=True)
+    batch = {k: v.to(device) if hasattr(v, "to") else v for k, v in batch.items()}
+    labels = batch["input_ids"].clone()
+    for i, plen in enumerate(prompt_lens):
+        labels[i, :plen] = -100
+    if "attention_mask" in batch:
+        labels[batch["attention_mask"] == 0] = -100
+    batch["labels"] = labels
+    return batch, images
+
+
+def decode_generated_json(processor, input_ids, output_ids) -> str:
+    """Decode only tokens generated after the prompt (exclude vision+user prefix)."""
+    prompt_len = int(input_ids.shape[1])
+    new_ids = output_ids[0, prompt_len:]
+    return processor.tokenizer.decode(new_ids, skip_special_tokens=True)
+
+
+def generate_row_json_probs(model, processor, row: dict, image_root: Path, device) -> Tuple[List[float], bool]:
+    """
+    Run greedy JSON generation for one row. Returns (prob_list, parse_failed).
+    """
+    img = open_image(image_root, row)
+    msgs = build_user_messages(img, JSON_PROMPT)
+    text = processor.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True)
+    inputs = processor(text=[text], images=[img], return_tensors="pt")
+    inputs = {k: v.to(device) if hasattr(v, "to") else v for k, v in inputs.items()}
+    out_ids = model.generate(**inputs, max_new_tokens=192, do_sample=False)
+    decoded = decode_generated_json(processor, inputs["input_ids"], out_ids)
+    try:
+        parsed = extract_json_dict(decoded)
+        return [parsed[lbl] for lbl in VLM_LABELS], False
+    except (ValueError, json.JSONDecodeError):
+        return [0.5] * len(VLM_LABELS), True
+
+
+def generate_probs_from_rows(
+    model,
+    processor,
+    rows: Sequence[dict],
+    image_root: Path,
+    device,
+    batch_size: int = 1,
+) -> Tuple["torch.Tensor", int]:
+    """Batch wrapper (batch_size>1 still generates one image at a time)."""
+    import torch
+
+    probs_list: List[List[float]] = []
+    parse_failures = 0
+    model.eval()
+    for start in range(0, len(rows), batch_size):
+        chunk = rows[start : start + batch_size]
+        for row in chunk:
+            probs, failed = generate_row_json_probs(model, processor, row, image_root, device)
+            probs_list.append(probs)
+            if failed:
+                parse_failures += 1
+    return torch.tensor(probs_list, dtype=torch.float32), parse_failures
 
 
 def build_user_messages(image: Image.Image, prompt: str) -> List[dict]:

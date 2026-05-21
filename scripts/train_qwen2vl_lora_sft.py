@@ -8,7 +8,6 @@ Requires: pip install peft transformers
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from pathlib import Path
 
@@ -33,75 +32,15 @@ from model_registry import auto_run_id, resolve_experiment_dir, update_run_regis
 from qwen2vl_lora_common import (
     DEFAULT_MODEL_ROOT,
     GpuTimer,
-    JSON_PROMPT,
     apply_lora,
-    build_user_messages,
+    build_sft_batch,
     count_trainable_params,
     ensure_model_snapshot,
-    extract_json_dict,
+    generate_probs_from_rows,
     load_base_qwen_model,
     load_processor,
-    open_image,
     peak_gpu_memory_mb,
-    target_json_from_row,
 )
-
-
-def build_sft_batch(processor, rows, image_root, device):
-    """Build one SFT batch (reliable path: batch_size should be 1 for Qwen2-VL)."""
-    images = [open_image(image_root, r) for r in rows]
-    texts = []
-    prompt_lens = []
-    for img, row in zip(images, rows):
-        target = target_json_from_row(row)
-        user_msgs = build_user_messages(img, JSON_PROMPT)
-        conv = user_msgs + [{"role": "assistant", "content": target}]
-        full_text = processor.apply_chat_template(conv, tokenize=False)
-        texts.append(full_text)
-        prompt_only = processor.apply_chat_template(
-            user_msgs, tokenize=False, add_generation_prompt=True
-        )
-        prompt_ids = processor.tokenizer(prompt_only, add_special_tokens=False)["input_ids"]
-        prompt_lens.append(len(prompt_ids))
-
-    if len(rows) == 1:
-        batch = processor(text=[texts[0]], images=[images[0]], return_tensors="pt", padding=True)
-    else:
-        batch = processor(text=texts, images=images, return_tensors="pt", padding=True)
-    batch = {k: v.to(device) if hasattr(v, "to") else v for k, v in batch.items()}
-    labels = batch["input_ids"].clone()
-    for i, plen in enumerate(prompt_lens):
-        labels[i, :plen] = -100
-    if "attention_mask" in batch:
-        labels[batch["attention_mask"] == 0] = -100
-    batch["labels"] = labels
-    return batch, images
-
-
-@torch.no_grad()
-def generate_probs(model, processor, rows, image_root, device, batch_size: int = 1):
-    from qwen2vl_lora_common import VLM_LABELS
-
-    model.eval()
-    probs_list = []
-    parse_failures = 0
-    for start in range(0, len(rows), batch_size):
-        batch = rows[start : start + batch_size]
-        for row in batch:
-            img = open_image(image_root, row)
-            msgs = build_user_messages(img, JSON_PROMPT)
-            text = processor.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True)
-            inputs = processor(text=[text], images=[img], return_tensors="pt").to(device)
-            out_ids = model.generate(**inputs, max_new_tokens=192, do_sample=False)
-            decoded = processor.batch_decode(out_ids, skip_special_tokens=True)[0]
-            try:
-                d = extract_json_dict(decoded)
-                probs_list.append([d[lbl] for lbl in VLM_LABELS])
-            except (ValueError, json.JSONDecodeError):
-                parse_failures += 1
-                probs_list.append([0.5] * len(VLM_LABELS))
-    probs_t = torch.tensor(probs_list, dtype=torch.float32)
-    return probs_t, parse_failures
 
 
 def main():
@@ -215,7 +154,6 @@ def main():
                     print({"step": global_step, "val_loss": vloss})
                     if vloss < best_val_loss:
                         best_val_loss = vloss
-                        model.save_pretrained(adapter_dir)
                     model.train()
             pbar.set_postfix(loss=epoch_loss / max(n_batches, 1))
 
@@ -236,10 +174,13 @@ def main():
         print({"epoch": epoch + 1, "val_loss": vloss})
         if vloss < best_val_loss:
             best_val_loss = vloss
-            model.save_pretrained(adapter_dir)
+        # Always keep the latest epoch adapter (avoids early-step "best val loss" checkpoints).
+        model.save_pretrained(adapter_dir)
 
     if not adapter_dir.exists():
         model.save_pretrained(adapter_dir)
+
+    trainable = count_trainable_params(model)
 
     from peft import PeftModel
 
@@ -247,8 +188,12 @@ def main():
     model = PeftModel.from_pretrained(base_reload, str(adapter_dir)).to(device)
     model.eval()
 
-    val_prob, val_parse_fail = generate_probs(model, processor, val_rows, image_root, device, args.batch_size)
-    test_prob, test_parse_fail = generate_probs(model, processor, test_rows, image_root, device, args.batch_size)
+    val_prob, val_parse_fail = generate_probs_from_rows(
+        model, processor, val_rows, image_root, device, args.batch_size
+    )
+    test_prob, test_parse_fail = generate_probs_from_rows(
+        model, processor, test_rows, image_root, device, args.batch_size
+    )
     va_y = torch.tensor([r["y_true"] for r in val_rows], dtype=torch.float32)
     va_m = torch.tensor([r["y_mask"] for r in val_rows], dtype=torch.float32)
     te_y = torch.tensor([r["y_true"] for r in test_rows], dtype=torch.float32)
@@ -258,7 +203,6 @@ def main():
     test_f1 = masked_macro_f1(test_prob, te_y, te_m, threshold=0.5)
     val_pm = probabilistic_metrics(val_prob, va_y, va_m)
     test_pm = probabilistic_metrics(test_prob, te_y, te_m)
-    trainable = count_trainable_params(model)
     gpu_hours = timer.stop() / 3600.0
 
     metrics = {
