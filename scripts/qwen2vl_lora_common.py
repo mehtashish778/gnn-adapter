@@ -329,6 +329,18 @@ def count_trainable_params(model) -> int:
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 
+def count_lora_adapter_params(model) -> int:
+    """LoRA A/B matrices; ignores requires_grad (correct after PeftModel reload)."""
+    return sum(p.numel() for n, p in model.named_parameters() if "lora_" in n)
+
+
+def count_cls_trainable_params(model) -> int:
+    """LoRA adapter + classification head (training capacity for cls variant)."""
+    head = getattr(model, "head", None)
+    head_n = sum(p.numel() for p in head.parameters()) if head is not None else 0
+    return count_lora_adapter_params(model) + head_n
+
+
 def get_lora_config(*, rank: int, causal_lm: bool = False):
     from peft import LoraConfig
 

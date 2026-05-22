@@ -9,7 +9,7 @@ Driver: `scripts/run_lora16_vs_cca.py`
 | Model | Test F1 @0.5 | Test AUROC | Test AUPRC | Test ECE | Test Brier | Trainable params | GPU-hours |
 |-------|--------------|------------|------------|----------|------------|------------------|-----------|
 | CCA (ref seed 0) (lora_r8_trial27_seeds_s0) | 0.7068 | 0.7172 | 0.6225 | 0.1146 | 0.1818 | 118,891 | — |
-| Qwen2-VL LoRA-16 + cls head (qwen2vl_lora_r16_v2) | 0.5822 | 0.6851 | 0.5910 | 0.1079 | 0.1821 | 10,759 | 3.37 |
+| Qwen2-VL LoRA-16 + cls head (qwen2vl_lora_r16_v2) | 0.5822 | 0.6851 | 0.5910 | 0.1079 | 0.1821 | 18,475,527 | 3.37 |
 | Qwen2-VL LoRA-16 + JSON SFT (parse fail test=9197) (qwen2vl_lora_r16_sft_v3) | 0.6554 | 0.5000 | 0.4466 | 0.1912 | 0.2500 | 18,464,768 | 16.06 |
 
 ## Δ vs CCA ref (seed 0, test)
@@ -19,7 +19,7 @@ Driver: `scripts/run_lora16_vs_cca.py`
 
 ## Cost note
 
-CCA uses ~118,891 adapter params; LoRA-16 cls uses ~10,759. CCA is ~1105.04% of LoRA-16 cls trainable params (AAAI target: CCA < 0.1% of LoRA-16).
+CCA uses ~118,891 adapter params; LoRA-16 cls uses ~18,475,527 (LoRA r=16 + head; patched from adapter). CCA is ~0.64% of LoRA-16 cls trainable params (AAAI target: CCA < 0.1% of LoRA-16).
 
 ## Takeaways
 

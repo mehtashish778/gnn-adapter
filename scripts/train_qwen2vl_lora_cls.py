@@ -38,7 +38,7 @@ from qwen2vl_lora_common import (
     GpuTimer,
     apply_lora,
     build_user_messages,
-    count_trainable_params,
+    count_cls_trainable_params,
     ensure_model_snapshot,
     load_base_qwen_model,
     load_processor,
@@ -269,6 +269,8 @@ def main():
             f"nan_steps={nan_steps}; try lower --lr or --max_train_samples for a smoke test."
         )
 
+    trainable = count_cls_trainable_params(model)
+
     from peft import PeftModel
 
     base_reload = load_base_qwen_model(
@@ -290,7 +292,6 @@ def main():
 
     val_pm = probabilistic_metrics(val_prob, va_y, va_m)
     test_pm = probabilistic_metrics(test_prob, te_y, te_m)
-    trainable = count_trainable_params(model)
     gpu_hours = timer.stop() / 3600.0
 
     metrics = {
