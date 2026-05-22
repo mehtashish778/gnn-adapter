@@ -9,7 +9,6 @@ import sys
 from pathlib import Path
 
 import torch
-import torch.nn as nn
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 if str(_SCRIPT_DIR) not in sys.path:
@@ -21,7 +20,6 @@ from qwen2vl_lora_common import (
     count_cls_trainable_params,
     ensure_model_snapshot,
     load_base_qwen_model,
-    load_processor,
 )
 from train_qwen2vl_lora_cls import Qwen2VLClassifier
 
@@ -61,9 +59,10 @@ def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("run_dirs", nargs="+", type=Path, help="Experiment run dirs with adapter/ and metrics.json")
     p.add_argument("--model_dir", type=Path, default=DEFAULT_MODEL_ROOT)
-    p.add_argument("--device", default=None)
+    p.add_argument("--gpu_id", type=int, default=0, help="CUDA device index (ignored if --device is set)")
+    p.add_argument("--device", default=None, help="Override device, e.g. cuda:1")
     args = p.parse_args()
-    device = args.device or require_cuda_device()
+    device = args.device or require_cuda_device(args.gpu_id)
     for run_dir in args.run_dirs:
         patch_run_dir(run_dir.resolve(), args.model_dir, device)
 
