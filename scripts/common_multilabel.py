@@ -28,6 +28,16 @@ CSV_TO_VLM = {
     "No Finding": "No Finding",
 }
 
+# NIH ChestX-ray14 Finding Labels use the same names for the six shared pathologies.
+NIH_FINDINGS_FOR_VLM = [
+    "Atelectasis",
+    "Cardiomegaly",
+    "Effusion",
+    "Pneumonia",
+    "Edema",
+    "Consolidation",
+]
+
 
 def normalize_path(path: str) -> str:
     return path.strip().replace("\\", "/")
@@ -53,12 +63,19 @@ def resolve_dataset_image_path(image_root: Path, rel_path: str) -> Path:
     """
     Split rows often use CheXpert-v1.0-small/train/... while files on disk are image_root/train/...
     Try the path as-is, then with the CheXpert-v1.0-small/ prefix stripped.
+    NIH rows use nih_chestxray14/images_XXX/images/<file>.png under data/raw/.
     """
     rel = normalize_path(rel_path)
     candidates = [image_root / rel]
     prefix = "CheXpert-v1.0-small/"
     if rel.startswith(prefix):
         candidates.append(image_root / rel[len(prefix) :])
+    nih_prefix = "nih_chestxray14/"
+    if rel.startswith(nih_prefix):
+        candidates.append(image_root / rel)
+        candidates.append(image_root.parent / rel)
+        tail = rel[len(nih_prefix) :]
+        candidates.append(image_root / tail)
     for p in candidates:
         if p.is_file():
             return p

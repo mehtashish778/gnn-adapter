@@ -211,6 +211,8 @@ class FeatureCache:
 
 def clip_cache_dataset_id(protocol: str) -> str:
     """Map protocol name to dataset_id for CLIP caches."""
+    if protocol == "nih":
+        return "nih_chestxray14"
     if protocol == "calibrated4way":
         return "chexpert_calibrated4way"
     return "chexpert_default"

@@ -18,6 +18,7 @@ if str(_SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPT_DIR))
 
 from common_multilabel import (
+    load_per_class_thresholds,
     load_rows,
     masked_macro_f1,
     masked_subset_accuracy,
@@ -104,32 +105,57 @@ def main():
         action="store_true",
         help="Fail if local HF cache is incomplete (do not fetch from Hub).",
     )
+    parser.add_argument(
+        "--checkpoint_run_dir",
+        default="",
+        help="CheXpert-trained run with adapter/ (cross-site: load weights from here).",
+    )
+    parser.add_argument(
+        "--out_run_id",
+        default="",
+        help="Run id for writing metrics (defaults to --run_id or crosssite_eval).",
+    )
+    parser.add_argument("--skip_val", action="store_true", help="Only score test_rows (cross-site).")
     args = parser.parse_args()
 
     device = require_cuda_device(args.gpu_id)
     set_seed(args.seed)
 
-    run_dir = Path(args.run_dir) if args.run_dir else resolve_experiment_dir(
+    ckpt_dir = Path(args.checkpoint_run_dir) if args.checkpoint_run_dir else None
+    if ckpt_dir is None:
+        ckpt_dir = Path(args.run_dir) if args.run_dir else resolve_experiment_dir(
+            out_dir=None,
+            model_id=args.model_id,
+            protocol="default",
+            run_id=args.run_id or None,
+            default_legacy_out_dir=f"data/processed/experiments/{args.model_id}",
+        )
+    if not ckpt_dir.is_dir():
+        raise FileNotFoundError(f"Checkpoint run dir not found: {ckpt_dir}")
+
+    out_run_id = args.out_run_id or args.run_id or "crosssite_eval"
+    run_dir = resolve_experiment_dir(
         out_dir=None,
         model_id=args.model_id,
         protocol=args.protocol,
-        run_id=args.run_id or None,
+        run_id=out_run_id,
         default_legacy_out_dir=f"data/processed/experiments/{args.model_id}",
     )
-    if not run_dir.is_dir():
-        raise FileNotFoundError(f"Run dir not found: {run_dir}")
+    run_dir.mkdir(parents=True, exist_ok=True)
 
-    meta_path = run_dir / "run_meta.json"
+    meta_path = ckpt_dir / "run_meta.json"
     if meta_path.exists():
         with meta_path.open("r", encoding="utf-8") as f:
             meta = json.load(f)
         args.mode = meta.get("mode", args.mode)
 
-    adapter_dir = run_dir / "adapter"
+    adapter_dir = ckpt_dir / "adapter"
     if not adapter_dir.exists():
         raise FileNotFoundError(f"Missing adapter at {adapter_dir}")
 
-    val_rows = load_rows(Path(args.val_rows_json))
+    val_rows = []
+    if not args.skip_val:
+        val_rows = load_rows(Path(args.val_rows_json))
     test_rows = load_rows(Path(args.test_rows_json))
     image_root = Path(args.image_root)
     model_dir = ensure_model_snapshot(
@@ -139,76 +165,95 @@ def main():
     processor = load_processor(model_dir, local_files_only=True)
 
     parse_failures = 0
+    val_f1 = None
     if args.mode == "cls":
         backbone = load_lora_model(model_dir, adapter_dir, device, causal_lm=False)
-        head_path = run_dir / "classifier_head.pt"
+        head_path = ckpt_dir / "classifier_head.pt"
         if not head_path.exists():
             raise FileNotFoundError(f"Missing {head_path} for cls mode")
         hidden_size = backbone.config.hidden_size
-        num_labels = len(val_rows[0]["y_true"])
+        num_labels = len(test_rows[0]["y_true"])
         head = nn.Linear(hidden_size, num_labels, dtype=torch.float32).to(device=device)
-        head.load_state_dict(torch.load(head_path, map_location=device))
-        val_prob = score_cls(backbone, head, processor, val_rows, image_root, device, args.batch_size)
+        head.load_state_dict(torch.load(head_path, map_location=device, weights_only=True))
+        val_prob = None
+        if val_rows:
+            val_prob = score_cls(backbone, head, processor, val_rows, image_root, device, args.batch_size)
         test_prob = score_cls(backbone, head, processor, test_rows, image_root, device, args.batch_size)
     else:
         model = load_lora_model(model_dir, adapter_dir, device, causal_lm=True)
-        val_prob, pf_v = score_gen(model, processor, val_rows, image_root, device, args.batch_size)
+        val_prob, pf_v = None, 0
+        if val_rows:
+            val_prob, pf_v = score_gen(model, processor, val_rows, image_root, device, args.batch_size)
         test_prob, pf_t = score_gen(model, processor, test_rows, image_root, device, args.batch_size)
         parse_failures = pf_v + pf_t
 
-    va_y = torch.tensor([r["y_true"] for r in val_rows], dtype=torch.float32)
-    va_m = torch.tensor([r["y_mask"] for r in val_rows], dtype=torch.float32)
     te_y = torch.tensor([r["y_true"] for r in test_rows], dtype=torch.float32)
     te_m = torch.tensor([r["y_mask"] for r in test_rows], dtype=torch.float32)
-
-    val_f1 = masked_macro_f1(val_prob, va_y, va_m, threshold=0.5)
     test_f1 = masked_macro_f1(test_prob, te_y, te_m, threshold=0.5)
-    val_pm = probabilistic_metrics(val_prob, va_y, va_m)
     test_pm = probabilistic_metrics(test_prob, te_y, te_m)
 
-    metrics_path = run_dir / "metrics.json"
-    metrics = {}
-    if metrics_path.exists():
-        with metrics_path.open("r", encoding="utf-8") as f:
-            metrics = json.load(f)
-    metrics.update(
-        {
-            "val_macro_f1@0.5": val_f1,
-            "test_macro_f1@0.5": test_f1,
-            "val_subset_accuracy@0.5": masked_subset_accuracy(val_prob, va_y, va_m, threshold=0.5),
-            "test_subset_accuracy@0.5": masked_subset_accuracy(test_prob, te_y, te_m, threshold=0.5),
-            "val_macro_auroc": val_pm["macro_auroc"],
-            "val_macro_auprc": val_pm["macro_auprc"],
-            "val_macro_ece": val_pm["macro_ece"],
-            "val_macro_brier": val_pm["macro_brier"],
-            "test_macro_auroc": test_pm["macro_auroc"],
-            "test_macro_auprc": test_pm["macro_auprc"],
-            "test_macro_ece": test_pm["macro_ece"],
-            "test_macro_brier": test_pm["macro_brier"],
-            "scored_mode": args.mode,
-            "parse_failures": parse_failures,
-        }
-    )
-    write_json(metrics_path, metrics)
-    write_json(
-        run_dir / "val_predictions.json",
-        {"probs": val_prob.tolist(), "y_true": va_y.tolist(), "y_mask": va_m.tolist()},
-    )
+    thr_path = Path("data/processed/experiments/thresholds/per_class_thresholds.json")
+    thr_list = load_per_class_thresholds(thr_path)
+
+    metrics: dict = {
+        "test_macro_f1@0.5": test_f1,
+        "test_subset_accuracy@0.5": masked_subset_accuracy(test_prob, te_y, te_m, threshold=0.5),
+        "test_macro_auroc": test_pm["macro_auroc"],
+        "test_macro_auprc": test_pm["macro_auprc"],
+        "test_macro_ece": test_pm["macro_ece"],
+        "test_macro_brier": test_pm["macro_brier"],
+        "scored_mode": args.mode,
+        "parse_failures": parse_failures,
+        "cross_site": True,
+        "chexpert_run_dir": str(ckpt_dir),
+    }
+    if thr_list and len(thr_list) == te_y.shape[1]:
+        metrics["test_macro_f1@per_class_thr"] = masked_macro_f1(
+            test_prob, te_y, te_m, threshold=thr_list
+        )
+    ckpt_metrics_path = ckpt_dir / "metrics.json"
+    if ckpt_metrics_path.exists():
+        with ckpt_metrics_path.open("r", encoding="utf-8") as f:
+            ckpt_m = json.load(f)
+        if ckpt_m.get("trainable_params") is not None:
+            metrics["trainable_params"] = ckpt_m["trainable_params"]
+    if val_rows and val_prob is not None:
+        va_y = torch.tensor([r["y_true"] for r in val_rows], dtype=torch.float32)
+        va_m = torch.tensor([r["y_mask"] for r in val_rows], dtype=torch.float32)
+        val_f1 = masked_macro_f1(val_prob, va_y, va_m, threshold=0.5)
+        val_pm = probabilistic_metrics(val_prob, va_y, va_m)
+        metrics.update(
+            {
+                "val_macro_f1@0.5": val_f1,
+                "val_subset_accuracy@0.5": masked_subset_accuracy(val_prob, va_y, va_m, threshold=0.5),
+                "val_macro_auroc": val_pm["macro_auroc"],
+                "val_macro_auprc": val_pm["macro_auprc"],
+                "val_macro_ece": val_pm["macro_ece"],
+                "val_macro_brier": val_pm["macro_brier"],
+            }
+        )
+        write_json(
+            run_dir / "val_predictions.json",
+            {"probs": val_prob.tolist(), "y_true": va_y.tolist(), "y_mask": va_m.tolist()},
+        )
+    write_json(run_dir / "metrics.json", metrics)
     write_json(
         run_dir / "test_predictions.json",
         {"probs": test_prob.tolist(), "y_true": te_y.tolist(), "y_mask": te_m.tolist()},
     )
 
     if args.model_id and args.protocol:
+        reg_metrics = {
+            "test_macro_f1@0.5": test_f1,
+            "test_macro_auroc": test_pm["macro_auroc"],
+        }
+        if val_f1 is not None:
+            reg_metrics["val_macro_f1@0.5"] = val_f1
         update_run_registry(
             model_id=args.model_id,
             protocol=args.protocol,
             run_dir=run_dir,
-            metrics={
-                "val_macro_f1@0.5": val_f1,
-                "test_macro_f1@0.5": test_f1,
-                "test_macro_auroc": test_pm["macro_auroc"],
-            },
+            metrics=reg_metrics,
             hparams={"mode": args.mode},
         )
 
