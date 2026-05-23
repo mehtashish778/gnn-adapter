@@ -480,6 +480,7 @@ def main() -> None:
             "or score_qwen2vl_lora (qwen2vl_lora_r16)."
         )
 
+    probs, y, m = probs.cpu(), y.cpu(), m.cpu()
     out_dir = write_crosssite_eval(
         model_id=model_id,
         protocol=args.protocol,

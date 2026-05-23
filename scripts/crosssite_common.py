@@ -116,6 +116,10 @@ def write_crosssite_eval(
     )
     out_dir.mkdir(parents=True, exist_ok=True)
 
+    probs = probs.cpu()
+    y_true = y_true.cpu()
+    y_mask = y_mask.cpu()
+
     test_f1 = masked_macro_f1(probs, y_true, y_mask, threshold=0.5)
     pm = probabilistic_metrics(probs, y_true, y_mask)
 

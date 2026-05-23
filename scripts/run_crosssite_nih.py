@@ -23,6 +23,20 @@ def _run(cmd: List[str]) -> None:
     subprocess.run(cmd, cwd=_REPO, check=True)
 
 
+def _run_eval(cmd: List[str]) -> bool:
+    """Run an eval subprocess; return False (skip) on missing checkpoint, reraise other errors."""
+    print({"run": " ".join(cmd)})
+    result = subprocess.run(cmd, cwd=_REPO)
+    if result.returncode == 0:
+        return True
+    # Re-run capturing stderr to detect missing-checkpoint errors vs real bugs
+    probe = subprocess.run(cmd, cwd=_REPO, capture_output=True, text=True)
+    if "FileNotFoundError" in probe.stderr or "No CheXpert run dir" in probe.stderr:
+        print({"skip": cmd[cmd.index("--model_id") + 1], "reason": "missing CheXpert checkpoint"})
+        return False
+    raise subprocess.CalledProcessError(result.returncode, cmd)
+
+
 def _rows_have_vlm(test_rows: Path) -> bool:
     if not test_rows.exists():
         return False
@@ -312,7 +326,7 @@ def main() -> None:
             if model_id in ("vlm_zeroshot", "qwen2vl_lora_r16", "qwen2vl_lora_r16_sft"):
                 continue
             chex_run = CHEXPERT_RUN_NAMES.get(model_id, f"{model_id}_default")
-            _run(
+            _run_eval(
                 [
                     py,
                     str(_SCRIPTS / "eval_crosssite.py"),
