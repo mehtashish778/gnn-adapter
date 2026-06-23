@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import random
 from pathlib import Path
 
 from common_multilabel import NIH_FINDINGS_FOR_VLM, VLM_LABELS, normalize_path, write_json
@@ -43,6 +44,12 @@ def main() -> None:
         default="data/processed/multilabel/nih/canonical_labels.json",
     )
     parser.add_argument("--max_samples", type=int, default=0, help="0 = all rows")
+    parser.add_argument(
+        "--random_sample",
+        action="store_true",
+        help="Sample max_samples rows uniformly at random (requires --max_samples > 0).",
+    )
+    parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
 
     nih_root = Path(args.nih_root)
@@ -54,15 +61,13 @@ def main() -> None:
     image_map = build_image_index_map(nih_root)
     print({"indexed_png_files": len(image_map)})
 
-    out_rows = []
+    candidates: list[dict] = []
     missing_images = 0
     skipped_no_finding_only = 0
 
     with csv_path.open("r", encoding="utf-8", newline="") as f:
         reader = csv.DictReader(f)
-        for i, row in enumerate(reader):
-            if args.max_samples > 0 and len(out_rows) >= args.max_samples:
-                break
+        for row in reader:
             image_index = (row.get("Image Index") or "").strip()
             if not image_index:
                 continue
@@ -89,7 +94,7 @@ def main() -> None:
                     mask[lbl] = 0
 
             patient_id = (row.get("Patient ID") or "unknown").strip()
-            out_rows.append(
+            candidates.append(
                 {
                     "path": rel,
                     "image_id": image_index,
@@ -98,6 +103,16 @@ def main() -> None:
                     "mask": mask,
                 }
             )
+
+    if args.max_samples > 0:
+        if args.random_sample:
+            random.seed(args.seed)
+            n = min(args.max_samples, len(candidates))
+            out_rows = random.sample(candidates, n)
+        else:
+            out_rows = candidates[: args.max_samples]
+    else:
+        out_rows = candidates
 
     payload = {
         "meta": {
@@ -108,6 +123,8 @@ def main() -> None:
             "missing_images": missing_images,
             "skipped_no_finding_only": skipped_no_finding_only,
             "max_samples": args.max_samples,
+            "random_sample": bool(args.random_sample),
+            "seed": args.seed if args.random_sample else None,
         },
         "rows": out_rows,
     }

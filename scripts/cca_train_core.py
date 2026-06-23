@@ -33,6 +33,7 @@ if str(_SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPT_DIR))
 
 from common_multilabel import (
+    clip_text_embeds_tensor,
     load_per_class_thresholds,
     load_rows,
     masked_bce_with_logits,
@@ -153,7 +154,7 @@ def init_concept_queries_from_text(
     phrases = phrases[:n_use]
     inputs = processor(text=phrases, return_tensors="pt", padding=True, truncation=True)
     inputs = {k: v.to(device) for k, v in inputs.items()}
-    text_feats = clip_model.get_text_features(**inputs).float()
+    text_feats = clip_text_embeds_tensor(clip_model, **inputs).float()
     text_dim = text_feats.shape[-1]
     if text_dim != model.query_dim:
         proj = nn.Linear(text_dim, model.query_dim).to(device)

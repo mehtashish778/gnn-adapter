@@ -54,12 +54,14 @@ def build_crosssite_report(
     out_md: Path,
     n_test: int,
     smoke: bool,
+    max_samples: int = 0,
 ) -> None:
     lines = [
         "# NIH ChestX-ray14 cross-site evaluation",
         "",
         f"Protocol: `{protocol}`. Train: CheXpert only. Test: NIH ({n_test:,} images"
         + (", **smoke subset**" if smoke else "")
+        + (f", **subset cap {max_samples:,}**" if max_samples > 0 and not smoke else "")
         + ").",
         "",
         "| Model | Test F1 @0.5 | Test AUROC | Test AUPRC | Test ECE | Test Brier | Trainable params |",
@@ -143,7 +145,18 @@ def build_crosssite_report(
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--smoke", action="store_true", help="Cap at --max_samples (default 500).")
-    parser.add_argument("--max_samples", type=int, default=500)
+    parser.add_argument(
+        "--max_samples",
+        type=int,
+        default=0,
+        help="Limit NIH rows (0 = all). Use with --random_sample for a random subset.",
+    )
+    parser.add_argument(
+        "--random_sample",
+        action="store_true",
+        help="Randomly sample --max_samples rows (passed to 01_build_canonical_labels_nih.py).",
+    )
+    parser.add_argument("--seed", type=int, default=42, help="RNG seed when --random_sample is set.")
     parser.add_argument("--gpu_id", type=int, default=0)
     parser.add_argument("--skip_data", action="store_true")
     parser.add_argument("--skip_vlm", action="store_true")
@@ -163,11 +176,14 @@ def main() -> None:
     args = parser.parse_args()
 
     py = sys.executable
-    max_n = args.max_samples if args.smoke else 0
-    test_rows = _REPO / "data/processed/splits/nih/test_rows.json"
-    canonical = _REPO / "data/processed/multilabel/nih/canonical_labels.json"
-    aligned = _REPO / "data/processed/multilabel/nih/aligned_vlm_targets.json"
-    vlm_dir = _REPO / "data/outputs_vlm_nih"
+    max_n = args.max_samples
+    if args.smoke and max_n == 0:
+        max_n = 500
+    subset_suffix = f"_n{max_n}" if max_n > 0 else ""
+    test_rows = _REPO / f"data/processed/splits/nih/test_rows{subset_suffix}.json"
+    canonical = _REPO / f"data/processed/multilabel/nih/canonical_labels{subset_suffix}.json"
+    aligned = _REPO / f"data/processed/multilabel/nih/aligned_vlm_targets{subset_suffix}.json"
+    vlm_dir = _REPO / f"data/outputs_vlm_nih{subset_suffix}"
     protocol = "nih"
 
     if args.models == ["all"]:
@@ -188,8 +204,23 @@ def main() -> None:
         cmd = [py, str(_SCRIPTS / "01_build_canonical_labels_nih.py"), "--nih_root", args.nih_root]
         if max_n > 0:
             cmd.extend(["--max_samples", str(max_n)])
+        if args.random_sample:
+            cmd.extend(["--random_sample", "--seed", str(args.seed)])
+        cmd.extend(["--out_json", str(canonical)])
         _run(cmd)
-        _run([py, str(_SCRIPTS / "03_make_multilabel_splits_nih.py"), "--canonical_json", str(canonical)])
+        val_rows = _REPO / f"data/processed/splits/nih/val_rows{subset_suffix}.json"
+        _run(
+            [
+                py,
+                str(_SCRIPTS / "03_make_multilabel_splits_nih.py"),
+                "--canonical_json",
+                str(canonical),
+                "--test_rows_json",
+                str(test_rows),
+                "--val_rows_json",
+                str(val_rows),
+            ]
+        )
 
     if not args.skip_vlm and not _rows_have_vlm(test_rows):
         cmd = [
@@ -375,6 +406,7 @@ def main() -> None:
             out_md=_REPO / "reports/comparison/crosssite_nih.md",
             n_test=n_test,
             smoke=args.smoke,
+            max_samples=max_n,
         )
 
 

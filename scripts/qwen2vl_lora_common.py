@@ -362,6 +362,20 @@ def load_processor(model_dir: Path, *, local_files_only: bool = True):
     return AutoProcessor.from_pretrained(str(model_dir), local_files_only=local_files_only)
 
 
+def qwen_hidden_size(model_or_config) -> int:
+    """Hidden dim for pooled language-model states (Qwen2-VL uses text_config)."""
+    cfg = getattr(model_or_config, "config", model_or_config)
+    if hasattr(cfg, "hidden_size"):
+        return int(cfg.hidden_size)
+    text_cfg = getattr(cfg, "text_config", None)
+    if text_cfg is not None and hasattr(text_cfg, "hidden_size"):
+        return int(text_cfg.hidden_size)
+    raise AttributeError(
+        "Cannot resolve hidden_size from Qwen2-VL config "
+        f"(type={type(cfg).__name__})"
+    )
+
+
 def load_base_qwen_model(
     model_dir: Path,
     device,

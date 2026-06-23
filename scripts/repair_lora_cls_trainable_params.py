@@ -20,6 +20,7 @@ from qwen2vl_lora_common import (
     count_cls_trainable_params,
     ensure_model_snapshot,
     load_base_qwen_model,
+    qwen_hidden_size,
 )
 from train_qwen2vl_lora_cls import Qwen2VLClassifier
 
@@ -40,7 +41,7 @@ def patch_run_dir(run_dir: Path, model_dir: Path, device: str) -> int:
     model_dir = ensure_model_snapshot(model_dir)
     base = load_base_qwen_model(model_dir, device, gradient_checkpointing=False)
     backbone = PeftModel.from_pretrained(base, str(adapter_dir)).to(device)
-    hidden_size = backbone.config.hidden_size
+    hidden_size = qwen_hidden_size(backbone)
     hparams = json.loads(metrics_path.read_text(encoding="utf-8")).get("hparams", {})
     num_labels = len(hparams.get("labels", [])) or 7
     model = Qwen2VLClassifier(backbone, hidden_size, num_labels).to(device)

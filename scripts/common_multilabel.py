@@ -43,20 +43,36 @@ def normalize_path(path: str) -> str:
     return path.strip().replace("\\", "/")
 
 
-def clip_image_embeds_tensor(clip_model, pixel_values) -> Any:
-    """
-    HF CLIPModel.get_image_features may return a Tensor (older) or BaseModelOutputWithPooling (newer).
-    Projected image embeddings are the returned tensor or .pooler_output.
-    """
+def _clip_feature_tensor(out: Any, *, source: str) -> Any:
+    """Normalize CLIP get_*_features return value to a 2D embedding tensor."""
     import torch
 
-    out = clip_model.get_image_features(pixel_values=pixel_values)
     if torch.is_tensor(out):
         return out
     po = getattr(out, "pooler_output", None)
     if po is not None:
         return po
-    raise RuntimeError("CLIP get_image_features returned unexpected type %s" % type(out))
+    # Some CLIPModel versions expose projected features on these fields.
+    for key in ("text_embeds", "image_embeds"):
+        alt = getattr(out, key, None)
+        if alt is not None:
+            return alt
+    raise RuntimeError(f"CLIP {source} returned unexpected type {type(out)!r}")
+
+
+def clip_image_embeds_tensor(clip_model, pixel_values) -> Any:
+    """
+    HF CLIPModel.get_image_features may return a Tensor (older) or BaseModelOutputWithPooling (newer).
+    Projected image embeddings are the returned tensor or .pooler_output.
+    """
+    out = clip_model.get_image_features(pixel_values=pixel_values)
+    return _clip_feature_tensor(out, source="get_image_features")
+
+
+def clip_text_embeds_tensor(clip_model, **text_inputs) -> Any:
+    """HF CLIPModel.get_text_features may return a Tensor or BaseModelOutputWithPooling."""
+    out = clip_model.get_text_features(**text_inputs)
+    return _clip_feature_tensor(out, source="get_text_features")
 
 
 def resolve_dataset_image_path(image_root: Path, rel_path: str) -> Path:

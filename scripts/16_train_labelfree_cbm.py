@@ -19,6 +19,8 @@ if str(_SCRIPT_DIR) not in sys.path:
 
 from common_multilabel import (
     build_standard_argparser,
+    clip_image_embeds_tensor,
+    clip_text_embeds_tensor,
     load_rows,
     masked_macro_f1,
     require_cuda_device,
@@ -35,7 +37,7 @@ from models.architectures.cca import DEFAULT_CONCEPT_PHRASES
 def clip_concept_features(rows, image_root, clip_model, processor, device, phrases, batch_size):
     text_in = processor(text=phrases, return_tensors="pt", padding=True, truncation=True)
     text_in = {k: v.to(device) for k, v in text_in.items()}
-    txt = clip_model.get_text_features(**text_in)
+    txt = clip_text_embeds_tensor(clip_model, **text_in)
     txt = txt / txt.norm(dim=-1, keepdim=True).clamp(min=1e-8)
     chunks = []
     for start in tqdm(range(0, len(rows), batch_size), desc="CLIP concept encode"):
@@ -48,7 +50,7 @@ def clip_concept_features(rows, image_root, clip_model, processor, device, phras
                 images.append(im.convert("RGB"))
         inputs = processor(images=images, return_tensors="pt")
         pv = inputs["pixel_values"].to(device)
-        img_emb = clip_model.get_image_features(pixel_values=pv)
+        img_emb = clip_image_embeds_tensor(clip_model, pv)
         img_emb = img_emb / img_emb.norm(dim=-1, keepdim=True).clamp(min=1e-8)
         scores = (img_emb @ txt.T).float()
         chunks.append(scores.cpu())

@@ -39,6 +39,7 @@ from qwen2vl_lora_common import (
     pool_last_token_hidden,
     prepare_inputs,
     ensure_model_snapshot,
+    qwen_hidden_size,
 )
 
 
@@ -171,7 +172,7 @@ def main():
         head_path = ckpt_dir / "classifier_head.pt"
         if not head_path.exists():
             raise FileNotFoundError(f"Missing {head_path} for cls mode")
-        hidden_size = backbone.config.hidden_size
+        hidden_size = qwen_hidden_size(backbone)
         num_labels = len(test_rows[0]["y_true"])
         head = nn.Linear(hidden_size, num_labels, dtype=torch.float32).to(device=device)
         head.load_state_dict(torch.load(head_path, map_location=device, weights_only=True))

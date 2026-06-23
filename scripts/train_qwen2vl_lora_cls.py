@@ -33,6 +33,7 @@ from common_multilabel import (
 )
 from model_registry import auto_run_id, resolve_experiment_dir, update_run_registry
 from qwen2vl_lora_common import (
+    qwen_hidden_size,
     CLS_PROMPT,
     DEFAULT_MODEL_ROOT,
     GpuTimer,
@@ -173,7 +174,7 @@ def main():
     )
     backbone = apply_lora(backbone, rank=args.lora_rank, causal_lm=False)
 
-    hidden_size = backbone.config.hidden_size
+    hidden_size = qwen_hidden_size(backbone)
     num_labels = len(train_rows[0]["y_true"])
     model = Qwen2VLClassifier(backbone, hidden_size, num_labels).to(device)
 
