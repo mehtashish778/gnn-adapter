@@ -2,7 +2,7 @@
   {
     "image_id": "train/patient00001/study1/view1_frontal.jpg",
     "path": "CheXpert-v1.0-small/train/patient00001/study1/view1_frontal.jpg",
-    "absolute_path": "/home/ashish/projects/mbzai/data/raw/train/patient00001/study1/view1_frontal.jpg",
+    "absolute_path": "D:/ashish/mbzai/data/raw/train/patient00001/study1/view1_frontal.jpg",
     "split": "train",
     "ground_truth": "No Finding",
     "scores": {
@@ -47,7 +47,7 @@
   {
     "image_id": "train/patient00002/study1/view1_frontal.jpg",
     "path": "CheXpert-v1.0-small/train/patient00002/study1/view1_frontal.jpg",
-    "absolute_path": "/home/ashish/projects/mbzai/data/raw/train/patient00002/study1/view1_frontal.jpg",
+    "absolute_path": "D:/ashish/mbzai/data/raw/train/patient00002/study1/view1_frontal.jpg",
     "split": "train",
     "ground_truth": "Consolidation",
     "scores": {
@@ -92,7 +92,7 @@
   {
     "image_id": "train/patient00004/study1/view1_frontal.jpg",
     "path": "CheXpert-v1.0-small/train/patient00004/study1/view1_frontal.jpg",
-    "absolute_path": "/home/ashish/projects/mbzai/data/raw/train/patient00004/study1/view1_frontal.jpg",
+    "absolute_path": "D:/ashish/mbzai/data/raw/train/patient00004/study1/view1_frontal.jpg",
     "split": "train",
     "ground_truth": "No Finding",
     "scores": {
@@ -137,7 +137,7 @@
   {
     "image_id": "train/patient00002/study2/view1_frontal.jpg",
     "path": "CheXpert-v1.0-small/train/patient00002/study2/view1_frontal.jpg",
-    "absolute_path": "/home/ashish/projects/mbzai/data/raw/train/patient00002/study2/view1_frontal.jpg",
+    "absolute_path": "D:/ashish/mbzai/data/raw/train/patient00002/study2/view1_frontal.jpg",
     "split": "train",
     "ground_truth": "Consolidation",
     "scores": {
@@ -182,7 +182,7 @@
   {
     "image_id": "train/patient00003/study1/view1_frontal.jpg",
     "path": "CheXpert-v1.0-small/train/patient00003/study1/view1_frontal.jpg",
-    "absolute_path": "/home/ashish/projects/mbzai/data/raw/train/patient00003/study1/view1_frontal.jpg",
+    "absolute_path": "D:/ashish/mbzai/data/raw/train/patient00003/study1/view1_frontal.jpg",
     "split": "train",
     "ground_truth": "Edema",
     "scores": {
@@ -227,7 +227,7 @@
   {
     "image_id": "train/patient00005/study1/view1_frontal.jpg",
     "path": "CheXpert-v1.0-small/train/patient00005/study1/view1_frontal.jpg",
-    "absolute_path": "/home/ashish/projects/mbzai/data/raw/train/patient00005/study1/view1_frontal.jpg",
+    "absolute_path": "D:/ashish/mbzai/data/raw/train/patient00005/study1/view1_frontal.jpg",
     "split": "train",
     "ground_truth": "No Finding",
     "scores": {

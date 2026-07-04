@@ -11,6 +11,8 @@ This document maps each script to its inputs/outputs so you can debug or rerun s
 - `gnn07_label_residual` -> `LabelGraphResidualGNN`
 - `gnn12_clip_vlm_homo` -> `ClipVlmHomogeneousGNN`
 - `gnn13_clip_bipartite` -> `ClipBipartiteAttributeGNN`
+- `cca` -> `CCAModel` (Concept-Evidence Adapter / CCA)
+- `cbm_posthoc`, `cbm_labelfree`, `qformer_adapter`, `mlgcn` -> Phase 4 baselines
 
 Organized output path:
 - `data/processed/experiments/<model_id>/<protocol>/<run_id>/...`
@@ -100,6 +102,51 @@ Output directory:
 
 ### One-shot run for all variants
 Script: `scripts/run_all_gnn_variants.sh`
+
+### Concept-Evidence Adapter (CCA)
+Script: `scripts/14_train_cca.py` (core: `scripts/cca_train_core.py`)  
+Config reference: `configs/train_cca.yaml`  
+Optuna HPO: `scripts/tune_cca_optuna.py` — full write-up in **`docs/cca_optuna_hpo.md`**  
+Faithfulness metrics: `scripts/faithfulness_metrics.py`  
+Concept priors: `scripts/build_concept_prior.py`, `scripts/permute_prior.py`, ablation driver `scripts/run_prior_ablation.py`
+
+Outputs:
+- `data/processed/experiments/cca/<protocol>/<run_id>/best_checkpoint.pt`
+- `metrics.json`, `val_predictions.json`, `test_predictions.json`, `attention_maps.pt`
+- Patch cache: `data/processed/embeddings/*_patch_v2_fp16.pt`
+
+**Full results log:** [`docs/cca_experiment_results.md`](cca_experiment_results.md)  
+**Reproduction recipe + hyperparameter reference:** [`docs/cca_reproduction.md`](cca_reproduction.md)
+
+Documented runs (default protocol):
+- **`cca_lora_r8_trial27`** — best overall (test F1 @0.5 ≈ **0.701**, LoRA patches + trial-27)
+- `cca_frozen_trial27_f1` — frozen patches + trial-27 + F1 ckpt (test ≈ 0.694)
+- `run_20260516_183647` — default hparams (test F1 @0.5 ≈ 0.653)
+- `cca_faithful` — default + faithfulness (test ≈ 0.674)
+- `best_optuna_cca_hpo` — Optuna trial-27 hparams, 60-epoch final, val_bce ckpt (test ≈ 0.658)
+- `data/processed/experiments/cca/optuna/best_trial.json` — best tuning trial (val F1 @0.5 ≈ 0.701)
+- LoRA variant table: [`reports/comparison/cca_lora_variants.md`](../reports/comparison/cca_lora_variants.md)
+- Concept-prior ablation table: [`reports/comparison/cca_prior_ablation.md`](../reports/comparison/cca_prior_ablation.md)
+- 5-seed leaderboard config (`lora_r8_trial27_seeds_s{0..4}`): see [`docs/cca_experiment_results.md §4a`](cca_experiment_results.md#4a-5-seeds--lora--trial-27-hparams-the-leaderboard-config)
+- Baselines (`cbm_posthoc`, `cbm_labelfree`, `qformer_adapter`, `mlgcn`): [`docs/cca_experiment_results.md §5`](cca_experiment_results.md#5-baselines-same-default-split-05)
+- Held-out-concept JSONs: `reports/holdout/cca_lora_r8_*.json`, `reports/holdout/cca_frozen_faithful.json`
+
+### Phase 4 baselines (same patch cache as CCA)
+| Script | model_id |
+|--------|----------|
+| `scripts/15_train_posthoc_cbm.py` | `cbm_posthoc` |
+| `scripts/16_train_labelfree_cbm.py` | `cbm_labelfree` |
+| `scripts/17_train_qformer_adapter.py` | `qformer_adapter` |
+| `scripts/18_train_mlgcn.py` | `mlgcn` |
+| `scripts/19_train_lora_clip_vision.py` | LoRA vision cache (`peft`) |
+| `scripts/train_qwen2vl_lora_cls.py` | Qwen2-VL LoRA r=16 + cls head |
+| `scripts/train_qwen2vl_lora_sft.py` | Qwen2-VL LoRA r=16 + JSON SFT |
+| `scripts/score_qwen2vl_lora.py` | Score LoRA run on val/test |
+| `scripts/run_lora16_vs_cca.py` | Train LoRA-16 + compare vs CCA |
+| `scripts/repair_qwen2vl_cache.py` | Fix incomplete/corrupt Qwen2-VL HF cache |
+| `scripts/20_holdout_concept.py` | held-out primitive ablation eval |
+
+Multi-seed stats: `scripts/run_seeds.py --use_numbered_script --stats_after` → `scripts/stats_compare.py`
 
 ## 7) Thresholds, Evaluation, and Reporting
 

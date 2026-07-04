@@ -41,6 +41,61 @@ MODEL_SPECS: Dict[str, ModelSpec] = {
         display_name="ClipBipartiteAttributeGNN",
         description="CLIP object node + VLM attribute nodes with bipartite message passing.",
     ),
+    "cca": ModelSpec(
+        model_id="cca",
+        display_name="CompositionalConceptAdapter",
+        description="Concept-evidence adapter: patch cross-attention → compositional self-attn → gated findings readout.",
+    ),
+    "cbm_posthoc": ModelSpec(
+        model_id="cbm_posthoc",
+        display_name="PostHocCBM",
+        description="Post-hoc concept bottleneck on VLM [logits; probs].",
+    ),
+    "cbm_labelfree": ModelSpec(
+        model_id="cbm_labelfree",
+        display_name="LabelFreeCBM",
+        description="Label-free CBM with CLIP concept similarities.",
+    ),
+    "qformer_adapter": ModelSpec(
+        model_id="qformer_adapter",
+        display_name="QFormerAdapter",
+        description="Learnable query cross-attention over ViT patches.",
+    ),
+    "mlgcn": ModelSpec(
+        model_id="mlgcn",
+        display_name="MLGCN",
+        description="ML-GCN style label-graph message passing.",
+    ),
+    "qwen2vl_lora_r16": ModelSpec(
+        model_id="qwen2vl_lora_r16",
+        display_name="Qwen2VLLoRA16Cls",
+        description="Qwen2-VL-2B-Instruct + LoRA r=16, classification head, masked BCE.",
+    ),
+    "qwen2vl_lora_r16_sft": ModelSpec(
+        model_id="qwen2vl_lora_r16_sft",
+        display_name="Qwen2VLLoRA16SFT",
+        description="Qwen2-VL-2B-Instruct + LoRA r=16, generative JSON SFT.",
+    ),
+    "qwen35_2b_lora_r16": ModelSpec(
+        model_id="qwen35_2b_lora_r16",
+        display_name="Qwen35_2B_LoRA16Cls",
+        description="Qwen3.5-2B + LoRA r=16, classification head, masked BCE.",
+    ),
+    "qwen35_2b_lora_r16_sft": ModelSpec(
+        model_id="qwen35_2b_lora_r16_sft",
+        display_name="Qwen35_2B_LoRA16SFT",
+        description="Qwen3.5-2B + LoRA r=16, generative JSON SFT.",
+    ),
+    "qwen35_4b_lora_r16": ModelSpec(
+        model_id="qwen35_4b_lora_r16",
+        display_name="Qwen35_4B_LoRA16Cls",
+        description="Qwen3.5-4B + LoRA r=16, classification head, masked BCE.",
+    ),
+    "qwen35_4b_lora_r16_sft": ModelSpec(
+        model_id="qwen35_4b_lora_r16_sft",
+        display_name="Qwen35_4B_LoRA16SFT",
+        description="Qwen3.5-4B + LoRA r=16, generative JSON SFT.",
+    ),
 }
 
 

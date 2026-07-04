@@ -2,6 +2,8 @@
 .venv/
 venv/
 env/
+.venv-wsl/
+mbzai_env/
 
 # Python cache/build
 __pycache__/
@@ -19,7 +21,6 @@ __pycache__/
 
 # Large data and generated artifacts
 data/
-reports/
 
 # Model checkpoints and experiment outputs
 *.pt
@@ -27,8 +28,18 @@ reports/
 *.ckpt
 *.onnx
 
-# Logs
+# Logs and run output
+logs/
 *.log
+*.err
 
-# Keep prior rule
+# Large model / tensor artifacts (outside data/)
+*.safetensors
+*.bin
+*.parquet
+
+# Experiment tracking
+wandb/
+
+# Raw images (datasets live outside repo)
 *.jpg

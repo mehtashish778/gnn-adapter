@@ -1,0 +1,159 @@
+# Concept-Evidence Adapter (CCA) — training pipeline reference
+# Results: docs/cca_experiment_results.md
+# Implementation: scripts/14_train_cca.py (core: scripts/cca_train_core.py)
+# Optuna HPO: scripts/tune_cca_optuna.py — see docs/cca_optuna_hpo.md
+
+pipeline:
+  description: |
+    CCA replaces pooled CLIP + bipartite GNN (gnn13) with:
+      Layer 1: P concept queries cross-attend over frozen ViT patch tokens (196×768).
+      Layer 2: self-attention compositional reasoning over primitives (optional RadGraph bias).
+      Layer 3: attention readout to C findings + residual VLM (z, p) gating.
+    Trainable params target: < 1M.
+
+  inputs:
+    splits: data/processed/splits/{train,val,test}_rows.json
+    splits_4way: data/processed/splits_4way/{train_fit,calib,val,test}_rows.json
+    row_fields:
+      - path
+      - x_logits
+      - x_probs
+      - y_true
+      - y_mask
+    images:
+      root: data/raw
+    vision:
+      model: openai/clip-vit-base-patch16
+      frozen: true
+      output: last_hidden_state[:, 1:, :]  # patch tokens, skip CLS
+
+  model_forward:
+    - ViT patch tokens (B, 196, 768) projected to query_dim
+    - Layer 1: concept queries (P) cross-attend → primitive feats + spatial attn maps
+    - Layer 2: self-attention over P primitives (+ optional RadGraph P×P bias)
+    - Layer 3: finding queries read out C labels; combine with VLM gate(alpha * f(z,p))
+    - Optional gate_M (C×P) sparsifies which primitives each finding uses
+
+  loss:
+    type: masked_binary_cross_entropy_with_logits
+    class_weights: pos_weight from train split
+    mask: y_mask
+
+  outputs:
+    checkpoint: data/processed/experiments/cca/<protocol>/<run_id>/best_checkpoint.pt
+    metrics: metrics.json
+    predictions: val_predictions.json, test_predictions.json, calib_predictions.json
+    attention: attention_maps.pt
+
+  cache:
+    feature_cache_dir: data/processed/embeddings
+    version: patch_v2_fp16
+    lora_version: patch_v2_fp16_lora_r{R}
+    lora_encoder_id: openai_clip-vit-base-patch16_lora_r{R}
+    legacy_combined: --clip_cache_pt path/to/combined.pt
+
+# LoRA CLIP patches (vision-only); build with scripts/19_train_lora_clip_vision.py
+lora_patches:
+  lora_rank: 8
+  encoder_id: openai_clip-vit-base-patch16_lora_r8
+  cache_version: patch_v2_fp16_lora_r8
+  adapter_dir: data/processed/embeddings/lora_r8_adapter
+  # Train CCA on LoRA patches:
+  #   python scripts/14_train_cca.py --lora_rank 8 --run_id cca_lora_r8 --best_metric val_macro_f1_05 ...
+  # Encode missing test split only (after upgrading script 19):
+  #   python scripts/19_train_lora_clip_vision.py --lora_r 8 --encode_only
+
+# --- Default training (pre-Optuna baseline) ---
+defaults:
+  num_primitives: 30
+  query_dim: 128
+  n_cross_attn_layers: 2
+  n_self_attn_layers: 2
+  n_heads: 2
+  alpha: 1.0
+  dropout: 0.1
+  batch_size: 16
+  use_gate_M: true
+  init_queries_from_text: true
+  # run_20260516_183647: val_macro_f1@0.5=0.654, test=0.653, ~435K params
+
+# --- Optuna best (trial 27, 2026-05-17) — see docs/cca_optuna_hpo.md ---
+optuna_best_trial27:
+  num_primitives: 30
+  query_dim: 64
+  n_cross_attn_layers: 1
+  n_self_attn_layers: 2
+  n_heads: 4
+  alpha: 0.5
+  dropout: 0.1001
+  lr: 0.000479
+  weight_decay: 0.000111
+  batch_size: 8
+  use_gate_M: false
+  init_queries_from_text: true
+  metrics:
+    val_macro_f1@0.5: 0.701
+    test_macro_f1@0.5: 0.691
+    trainable_params: 118891
+  lora_r8_trial27_f1_ckpt:
+    val_macro_f1@0.5: 0.704
+    test_macro_f1@0.5: 0.701
+    run_id: cca_lora_r8_trial27
+  artifacts:
+    study: data/processed/experiments/cca/optuna/best_trial.json
+
+# --- Optuna final train (60 ep, val_bce checkpoint) ---
+optuna_final:
+  run_id: best_optuna_cca_hpo
+  metrics:
+    val_macro_f1@0.5: 0.665
+    test_macro_f1@0.5: 0.658
+    test_macro_f1@per_class_thr: 0.664
+    trainable_params: 118891
+  artifacts:
+    dir: data/processed/experiments/cca/default/best_optuna_cca_hpo/
+
+# Example CLI (default split):
+#   python scripts/14_train_cca.py --model_id cca --protocol default --gpu_id 0 \
+#     --train_rows_json data/processed/splits/train_rows.json \
+#     --val_rows_json data/processed/splits/val_rows.json \
+#     --test_rows_json data/processed/splits/test_rows.json
+
+# Retrain Optuna best with F1 checkpoint selection:
+#   python scripts/14_train_cca.py --model_id cca --protocol default --gpu_id 0 --num_workers 0 \
+#     --run_id cca_trial27_best --best_metric val_macro_f1_05 --epochs 60 \
+#     --num_primitives 30 --query_dim 64 --n_cross_attn_layers 1 --n_self_attn_layers 2 \
+#     --n_heads 4 --alpha 0.5 --dropout 0.1001 --lr 0.000479 --weight_decay 0.000111 \
+#     --batch_size 8 --no-use-gate-M --init_queries_from_text
+
+# Calibrated 4-way (requires splits_4way):
+#   python scripts/14_train_cca.py --model_id cca --protocol calibrated4way --gpu_id 0 \
+#     --train_rows_json data/processed/splits_4way/train_fit_rows.json \
+#     --calib_rows_json data/processed/splits_4way/calib_rows.json \
+#     --val_rows_json data/processed/splits_4way/val_rows.json \
+#     --test_rows_json data/processed/splits_4way/test_rows.json
+
+# Multi-seed:
+#   python scripts/run_seeds.py --model_id cca --protocol default --seeds 0,1,2,3,4
+
+# Optuna hyperparameter search:
+#   python scripts/tune_cca_optuna.py --model_id cca --protocol default --gpu_id 0 --num_workers 0 \
+#     --n_trials 20 --tune_epochs 25 --final_epochs 60
+
+faithfulness:
+  loss: "L_BCE + lambda_sparse * sparsity_target + lambda_faithful * L_faithful"
+  lambda_sparse_default: 0.0
+  lambda_faithful_default: 0.0
+  sparsity_target: 0.10
+  gumbel_tau_init: 1.0
+  gumbel_tau_min: 0.5
+  intervention_per_step: 1
+
+ablations:
+  remove_primitive_layer: --n-cross-attn-layers 0
+  remove_compositional_layer: --n-self-attn-layers 0
+  remove_vlm_residual: --alpha 0.0
+  remove_gate_M: --no-use-gate-M
+  radgraph_prior: --radgraph-prior-json path/to/prior.json
+  primitive_count: --num-primitives {15,30,50,80}
+  encoder_swap: --clip-model openai/clip-vit-base-patch16

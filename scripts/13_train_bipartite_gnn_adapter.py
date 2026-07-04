@@ -32,68 +32,20 @@ if str(_SCRIPT_DIR) not in sys.path:
 
 from common_multilabel import (
     clip_image_embeds_tensor,
+    load_per_class_thresholds,
+    load_rows,
+    masked_bce_with_logits,
+    masked_macro_f1,
     masked_subset_accuracy,
+    require_cuda_device,
     resolve_dataset_image_path,
+    set_seed,
+    to_label_tensors,
     write_json,
 )
-from gnn_bipartite import NativeGNNClassifier, build_bipartite_edge_weights
+from gnn_bipartite import build_bipartite_edge_weights
 from model_registry import resolve_experiment_dir, update_run_registry
-
-
-def load_rows(path: Path) -> List[dict]:
-    with path.open("r", encoding="utf-8") as f:
-        return json.load(f)["rows"]
-
-
-def masked_macro_f1(probs, y_true, y_mask, threshold=0.5):
-    c = probs.shape[1]
-    if isinstance(threshold, (list, tuple)):
-        thr = torch.tensor(threshold, dtype=probs.dtype, device=probs.device)
-        pred = (probs >= thr.unsqueeze(0)).float()
-    else:
-        pred = (probs >= float(threshold)).float()
-    f1s = []
-    for i in range(c):
-        mask = y_mask[:, i] > 0
-        if mask.sum() == 0:
-            f1s.append(torch.tensor(0.0, device=probs.device))
-            continue
-        p = pred[mask, i]
-        y = y_true[mask, i]
-        tp = ((p == 1) & (y == 1)).sum().float()
-        fp = ((p == 1) & (y == 0)).sum().float()
-        fn = ((p == 0) & (y == 1)).sum().float()
-        denom = (2 * tp + fp + fn).clamp(min=1e-8)
-        f1s.append((2 * tp) / denom)
-    return torch.stack(f1s).mean().item()
-
-
-def masked_bce_with_logits(out, y_true, y_mask, pos_weight) -> torch.Tensor:
-    raw = F.binary_cross_entropy_with_logits(out, y_true, pos_weight=pos_weight, reduction="none")
-    return (raw * y_mask).sum() / y_mask.sum().clamp(min=1.0)
-
-
-def load_per_class_thresholds(path: Path) -> Optional[List[float]]:
-    if not path.exists():
-        return None
-    with path.open("r", encoding="utf-8") as f:
-        payload = json.load(f)
-    th = payload.get("thresholds")
-    if not th:
-        return None
-    return [float(x) for x in th]
-
-
-def set_seed(seed: int) -> None:
-    import random
-
-    import numpy as np
-
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(seed)
+from models.architectures.gnn13_clip_bipartite import ClipObjectBipartiteGNN
 
 
 class RowTensorDataset(Dataset):
@@ -149,14 +101,6 @@ def compute_clip_embeddings(
     return torch.cat(chunks, dim=0)
 
 
-def to_label_tensors(rows: List[dict]) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-    logits = torch.tensor([r["x_logits"] for r in rows], dtype=torch.float32)
-    probs = torch.tensor([r["x_probs"] for r in rows], dtype=torch.float32)
-    y_true = torch.tensor([r["y_true"] for r in rows], dtype=torch.float32)
-    y_mask = torch.tensor([r["y_mask"] for r in rows], dtype=torch.float32)
-    return logits, probs, y_true, y_mask
-
-
 def maybe_load_clip_cache(path: Optional[Path]) -> Optional[Dict[str, Any]]:
     if path is None or not path.exists():
         return None
@@ -196,38 +140,6 @@ def verify_paths_order(stored: List[str], rows: List[dict]) -> None:
     for a, b in zip(stored, rows):
         if a != b["path"]:
             raise ValueError("CLIP cache path order mismatch vs rows JSON; delete cache and re-encode.")
-
-
-class ClipObjectBipartiteGNN(nn.Module):
-    """CLIP → object embedding; bipartite stack; residual VLM logits."""
-
-    def __init__(
-        self,
-        clip_dim: int,
-        object_feature_dim: int,
-        num_attributes: int,
-        hidden_dims: List[int],
-        mid_dim: Optional[int],
-        dropout: float,
-        alpha: float,
-    ):
-        super().__init__()
-        self.alpha = alpha
-        self.clip_proj = nn.Linear(clip_dim, object_feature_dim)
-        self.gnn = NativeGNNClassifier(
-            object_in_dim=object_feature_dim,
-            attr_dim=2,
-            hidden_dims=hidden_dims,
-            num_attributes=num_attributes,
-            mid_dim=mid_dim,
-            dropout=dropout,
-        )
-
-    def forward(self, clip_emb: torch.Tensor, vlm_logits: torch.Tensor, vlm_probs: torch.Tensor, edge_weight: torch.Tensor):
-        attr_feats = torch.stack([vlm_logits, vlm_probs], dim=-1)
-        obj = self.clip_proj(clip_emb).unsqueeze(1)
-        logits = self.gnn(obj, attr_feats, edge_weight)
-        return logits + self.alpha * vlm_logits
 
 
 def main():
@@ -280,12 +192,7 @@ def main():
         raise ValueError("--gnn_hidden_dims must list at least one dim, e.g. 512,256")
     mid_dim: Optional[int] = None if args.gnn_mid_dim <= 0 else args.gnn_mid_dim
 
-    if not torch.cuda.is_available():
-        raise RuntimeError("CUDA is required.")
-    if args.gpu_id < 0 or args.gpu_id >= torch.cuda.device_count():
-        raise RuntimeError(f"Invalid --gpu_id {args.gpu_id}")
-    torch.cuda.set_device(args.gpu_id)
-    device = torch.device(f"cuda:{args.gpu_id}")
+    device = require_cuda_device(args.gpu_id)
     set_seed(args.seed)
 
     train_rows = load_rows(Path(args.train_rows_json))

@@ -33,77 +33,21 @@ from tqdm import tqdm
 from transformers import CLIPModel, CLIPProcessor
 
 from common_multilabel import (
+    build_adj,
     clip_image_embeds_tensor,
+    load_per_class_thresholds,
+    load_rows,
+    masked_bce_with_logits,
+    masked_macro_f1,
     masked_subset_accuracy,
+    require_cuda_device,
     resolve_dataset_image_path,
+    set_seed,
+    to_label_tensors,
     write_json,
 )
 from model_registry import resolve_experiment_dir, update_run_registry
-
-
-def load_rows(path: Path) -> List[dict]:
-    with path.open("r", encoding="utf-8") as f:
-        return json.load(f)["rows"]
-
-
-def build_adj(num_nodes: int, edge_index: List[List[int]], edge_weight: List[float]) -> torch.Tensor:
-    a = torch.zeros((num_nodes, num_nodes), dtype=torch.float32)
-    for s, t, w in zip(edge_index[0], edge_index[1], edge_weight):
-        a[int(s), int(t)] = float(w)
-    a = a + torch.eye(num_nodes, dtype=torch.float32)
-    deg = a.sum(dim=1, keepdim=True).clamp(min=1e-8)
-    return a / deg
-
-
-def masked_macro_f1(probs, y_true, y_mask, threshold=0.5):
-    c = probs.shape[1]
-    if isinstance(threshold, (list, tuple)):
-        thr = torch.tensor(threshold, dtype=probs.dtype, device=probs.device)
-        pred = (probs >= thr.unsqueeze(0)).float()
-    else:
-        pred = (probs >= float(threshold)).float()
-    f1s = []
-    for i in range(c):
-        mask = y_mask[:, i] > 0
-        if mask.sum() == 0:
-            f1s.append(torch.tensor(0.0, device=probs.device))
-            continue
-        p = pred[mask, i]
-        y = y_true[mask, i]
-        tp = ((p == 1) & (y == 1)).sum().float()
-        fp = ((p == 1) & (y == 0)).sum().float()
-        fn = ((p == 0) & (y == 1)).sum().float()
-        denom = (2 * tp + fp + fn).clamp(min=1e-8)
-        f1s.append((2 * tp) / denom)
-    return torch.stack(f1s).mean().item()
-
-
-def masked_bce_with_logits(out, y_true, y_mask, pos_weight) -> torch.Tensor:
-    raw = F.binary_cross_entropy_with_logits(out, y_true, pos_weight=pos_weight, reduction="none")
-    return (raw * y_mask).sum() / y_mask.sum().clamp(min=1.0)
-
-
-def load_per_class_thresholds(path: Path) -> Optional[List[float]]:
-    if not path.exists():
-        return None
-    with path.open("r", encoding="utf-8") as f:
-        payload = json.load(f)
-    th = payload.get("thresholds")
-    if not th:
-        return None
-    return [float(x) for x in th]
-
-
-def set_seed(seed: int) -> None:
-    import random
-
-    import numpy as np
-
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(seed)
+from models.architectures.gnn12_clip_vlm_homo import ClipVlmGraphAdapter
 
 
 class RowTensorDataset(Dataset):
@@ -159,52 +103,6 @@ def compute_clip_embeddings(
         feat = clip_image_embeds_tensor(clip, pv)
         chunks.append(feat.detach().cpu())
     return torch.cat(chunks, dim=0)
-
-
-class ClipVlmGraphAdapter(nn.Module):
-    """
-    Broadcast CLIP image embedding to each label node, concatenate VLM logit/prob per node,
-    encode, then K layers of adjacency message passing, residual add to VLM logits.
-    """
-
-    def __init__(
-        self,
-        clip_dim: int,
-        num_labels: int,
-        hidden_dim: int,
-        gnn_layers: int,
-        alpha: float,
-    ):
-        super().__init__()
-        self.num_labels = num_labels
-        self.alpha = alpha
-        self.clip_to_h = nn.Linear(clip_dim, hidden_dim)
-        self.node_encoder = nn.Linear(hidden_dim + 2, hidden_dim)
-        self.gnn_layers = nn.ModuleList([nn.Linear(hidden_dim, hidden_dim) for _ in range(max(1, gnn_layers))])
-        self.score_head = nn.Linear(hidden_dim, 1)
-
-    def forward(self, clip_emb: torch.Tensor, vlm_logits: torch.Tensor, vlm_probs: torch.Tensor, adj: torch.Tensor):
-        # clip_emb: B, D ; vlm_* : B, C
-        b, c = vlm_logits.shape
-        if c != self.num_labels:
-            raise ValueError(f"Expected {self.num_labels} labels, got {c}")
-        z = F.relu(self.clip_to_h(clip_emb))
-        z = z.unsqueeze(1).expand(b, c, -1)
-        x = torch.cat([z, vlm_logits.unsqueeze(-1), vlm_probs.unsqueeze(-1)], dim=-1)
-        h = F.relu(self.node_encoder(x))
-        for lin in self.gnn_layers:
-            h = torch.einsum("ij,bjh->bih", adj, h)
-            h = F.relu(lin(h))
-        delta = self.score_head(h).squeeze(-1)
-        return vlm_logits + self.alpha * delta
-
-
-def to_label_tensors(rows: List[dict]) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-    logits = torch.tensor([r["x_logits"] for r in rows], dtype=torch.float32)
-    probs = torch.tensor([r["x_probs"] for r in rows], dtype=torch.float32)
-    y_true = torch.tensor([r["y_true"] for r in rows], dtype=torch.float32)
-    y_mask = torch.tensor([r["y_mask"] for r in rows], dtype=torch.float32)
-    return logits, probs, y_true, y_mask
 
 
 def maybe_load_clip_cache(path: Optional[Path]) -> Optional[Dict[str, Any]]:
@@ -292,12 +190,7 @@ def main():
     parser.add_argument("--gpu_id", type=int, default=0)
     args = parser.parse_args()
 
-    if not torch.cuda.is_available():
-        raise RuntimeError("CUDA is required for this script (CLIP + training).")
-    if args.gpu_id < 0 or args.gpu_id >= torch.cuda.device_count():
-        raise RuntimeError(f"Invalid --gpu_id {args.gpu_id}; have {torch.cuda.device_count()} GPU(s).")
-    torch.cuda.set_device(args.gpu_id)
-    device = torch.device(f"cuda:{args.gpu_id}")
+    device = require_cuda_device(args.gpu_id)
     set_seed(args.seed)
 
     train_rows = load_rows(Path(args.train_rows_json))

@@ -1,4 +1,6 @@
-# Graph Neural Network Adapters for Multi-Label Chest X-Ray Classification Without VLM Fine-Tuning: Frozen Scorers, Structured Heads, and Leakage-Free Calibration
+# Concept-Evidence Adapters for Frozen Vision-Language Models on Multi-Label Medical Classification
+
+*Working title (legacy): Graph Neural Network Adapters for Multi-Label Chest X-Ray Classification Without VLM Fine-Tuning*
 
 **Repository:** MBZAI multi-label CXR pipeline
 **Codebase:** `scripts/01–13`, `configs/`, `gradio_inference.py`
