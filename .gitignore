@@ -2,6 +2,7 @@
 .venv/
 venv/
 env/
+.venv-wsl/
 mbzai_env/
 
 # Python cache/build

@@ -6,7 +6,9 @@ from __future__ import annotations
 
 import json
 import math
+import os
 import re
+import sys
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
@@ -18,6 +20,22 @@ from common_multilabel import VLM_LABELS, load_rows, resolve_dataset_image_path
 DEFAULT_HUB_ID = "Qwen/Qwen2-VL-2B-Instruct"
 DEFAULT_MODEL_ROOT = Path("data/hf_cache/models--Qwen--Qwen2-VL-2B-Instruct")
 DEFAULT_HF_CACHE = Path("data/hf_cache")
+
+
+def _configure_hf_hub_for_windows() -> None:
+    """Use file copies instead of symlinks in the HF cache (Windows without Developer Mode)."""
+    if sys.platform != "win32":
+        return
+    os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS", "1")
+    try:
+        from huggingface_hub import constants as hf_constants
+
+        hf_constants.HF_HUB_DISABLE_SYMLINKS = True
+    except ImportError:
+        pass
+
+
+_configure_hf_hub_for_windows()
 
 CLS_PROMPT = (
     "You are a chest X-ray classifier. Analyze the image and output a multi-label prediction."
@@ -160,17 +178,24 @@ def ensure_model_snapshot(
     Handles incomplete HF caches (e.g. empty model.safetensors.index.json) that cause
     JSONDecodeError in transformers.
     """
+    _configure_hf_hub_for_windows()
     root = Path(model_path)
     cache_dir = cache_dir or DEFAULT_HF_CACHE
     cache_dir.mkdir(parents=True, exist_ok=True)
 
+    resolved: Optional[Path] = None
     if root.exists():
-        resolved = resolve_hf_model_dir(root)
-        if validate_model_weights(resolved):
-            return resolved
-        removed = remove_corrupt_weight_files(resolved)
-        if removed:
-            print({"removed_corrupt_cache_files": removed, "dir": str(resolved)})
+        try:
+            resolved = resolve_hf_model_dir(root)
+        except FileNotFoundError as exc:
+            print({"incomplete_hf_cache": str(root), "detail": str(exc)})
+
+        if resolved is not None:
+            if validate_model_weights(resolved):
+                return resolved
+            removed = remove_corrupt_weight_files(resolved)
+            if removed:
+                print({"removed_corrupt_cache_files": removed, "dir": str(resolved)})
 
     if not allow_download:
         raise FileNotFoundError(
@@ -243,9 +268,9 @@ def build_sft_batch(processor, rows: Sequence[dict], image_root: Path, device) -
         target = target_json_from_row(row)
         user_msgs = build_user_messages(img, JSON_PROMPT)
         conv = user_msgs + [{"role": "assistant", "content": target}]
-        full_texts.append(processor.apply_chat_template(conv, tokenize=False))
-        prompt_text = processor.apply_chat_template(
-            user_msgs, tokenize=False, add_generation_prompt=True
+        full_texts.append(apply_chat_template_for_generation(processor, conv))
+        prompt_text = apply_chat_template_for_generation(
+            processor, user_msgs, add_generation_prompt=True
         )
         prompt_inputs = processor(text=[prompt_text], images=[img], return_tensors="pt")
         prompt_lens.append(int(prompt_inputs["input_ids"].shape[1]))
@@ -271,17 +296,36 @@ def decode_generated_json(processor, input_ids, output_ids) -> str:
     return processor.tokenizer.decode(new_ids, skip_special_tokens=True)
 
 
-def generate_row_json_probs(model, processor, row: dict, image_root: Path, device) -> Tuple[List[float], bool]:
+def generate_row_json_probs(
+    model,
+    processor,
+    row: dict,
+    image_root: Path,
+    device,
+    *,
+    max_new_tokens: int = 80,
+) -> Tuple[List[float], bool]:
     """
     Run greedy JSON generation for one row. Returns (prob_list, parse_failed).
     """
-    img = open_image(image_root, row)
-    msgs = build_user_messages(img, JSON_PROMPT)
-    text = processor.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True)
-    inputs = processor(text=[text], images=[img], return_tensors="pt")
-    inputs = {k: v.to(device) if hasattr(v, "to") else v for k, v in inputs.items()}
-    out_ids = model.generate(**inputs, max_new_tokens=192, do_sample=False)
-    decoded = decode_generated_json(processor, inputs["input_ids"], out_ids)
+    import torch
+
+    with torch.inference_mode():
+        img = open_image(image_root, row)
+        msgs = build_user_messages(img, JSON_PROMPT)
+        text = apply_chat_template_for_generation(processor, msgs, add_generation_prompt=True)
+        inputs = processor(text=[text], images=[img], return_tensors="pt")
+        inputs = {k: v.to(device) if hasattr(v, "to") else v for k, v in inputs.items()}
+        gen_kwargs: Dict[str, Any] = {
+            "max_new_tokens": max_new_tokens,
+            "do_sample": False,
+            "use_cache": True,
+        }
+        pad_id = getattr(processor.tokenizer, "pad_token_id", None)
+        if pad_id is not None:
+            gen_kwargs["pad_token_id"] = pad_id
+        out_ids = model.generate(**inputs, **gen_kwargs)
+        decoded = decode_generated_json(processor, inputs["input_ids"], out_ids)
     try:
         parsed = extract_json_dict(decoded)
         return [parsed[lbl] for lbl in VLM_LABELS], False
@@ -311,6 +355,17 @@ def generate_probs_from_rows(
             if failed:
                 parse_failures += 1
     return torch.tensor(probs_list, dtype=torch.float32), parse_failures
+
+
+def apply_chat_template_for_generation(processor, conversation, **kwargs) -> str:
+    """Apply chat template; Qwen3.5 needs enable_thinking=False for direct JSON output."""
+    kwargs.setdefault("tokenize", False)
+    try:
+        return processor.apply_chat_template(
+            conversation, enable_thinking=False, **kwargs
+        )
+    except TypeError:
+        return processor.apply_chat_template(conversation, **kwargs)
 
 
 def build_user_messages(image: Image.Image, prompt: str) -> List[dict]:
@@ -433,7 +488,7 @@ def load_lora_model(
 
 
 def prepare_inputs(processor, messages: List[dict], images: List[Image.Image], device):
-    text = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+    text = apply_chat_template_for_generation(processor, messages, add_generation_prompt=True)
     inputs = processor(text=[text], images=images, return_tensors="pt", padding=True)
     return {k: v.to(device) if hasattr(v, "to") else v for k, v in inputs.items()}
 

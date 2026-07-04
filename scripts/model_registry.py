@@ -76,6 +76,26 @@ MODEL_SPECS: Dict[str, ModelSpec] = {
         display_name="Qwen2VLLoRA16SFT",
         description="Qwen2-VL-2B-Instruct + LoRA r=16, generative JSON SFT.",
     ),
+    "qwen35_2b_lora_r16": ModelSpec(
+        model_id="qwen35_2b_lora_r16",
+        display_name="Qwen35_2B_LoRA16Cls",
+        description="Qwen3.5-2B + LoRA r=16, classification head, masked BCE.",
+    ),
+    "qwen35_2b_lora_r16_sft": ModelSpec(
+        model_id="qwen35_2b_lora_r16_sft",
+        display_name="Qwen35_2B_LoRA16SFT",
+        description="Qwen3.5-2B + LoRA r=16, generative JSON SFT.",
+    ),
+    "qwen35_4b_lora_r16": ModelSpec(
+        model_id="qwen35_4b_lora_r16",
+        display_name="Qwen35_4B_LoRA16Cls",
+        description="Qwen3.5-4B + LoRA r=16, classification head, masked BCE.",
+    ),
+    "qwen35_4b_lora_r16_sft": ModelSpec(
+        model_id="qwen35_4b_lora_r16_sft",
+        display_name="Qwen35_4B_LoRA16SFT",
+        description="Qwen3.5-4B + LoRA r=16, generative JSON SFT.",
+    ),
 }
 
 
