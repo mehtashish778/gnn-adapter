@@ -215,4 +215,6 @@ def clip_cache_dataset_id(protocol: str) -> str:
         return "nih_chestxray14"
     if protocol == "calibrated4way":
         return "chexpert_calibrated4way"
-    return "chexpert_default"
+    if protocol in ("default", ""):
+        return "chexpert_default"
+    return f"chexpert_{protocol}"

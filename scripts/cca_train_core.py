@@ -13,6 +13,7 @@ import argparse
 import json
 import math
 import sys
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
@@ -665,6 +666,45 @@ def train_cca(
     history: List[dict] = []
     epochs_no_improve = 0
 
+    log_dir: Optional[Path] = None
+    train_log_path: Optional[Path] = None
+    if save_artifacts:
+        log_dir = resolve_experiment_dir(
+            out_dir=args.out_dir or None,
+            model_id=args.model_id or None,
+            protocol=args.protocol or None,
+            run_id=args.run_id or None,
+            default_legacy_out_dir="data/processed/experiments/cca",
+        )
+        log_dir.mkdir(parents=True, exist_ok=True)
+        train_log_path = log_dir / "train.log"
+        train_log_path.write_text(
+            f"CCA training started run_id={args.run_id or 'auto'} protocol={args.protocol or 'default'}\n",
+            encoding="utf-8",
+        )
+        if verbose:
+            print({"training": "started", "epochs": args.epochs, "log_dir": str(log_dir)}, flush=True)
+
+    train_start = time.time()
+
+    def log_epoch(epoch: int, record: dict, *, new_best: bool) -> None:
+        msg = {
+            **record,
+            "epochs_total": args.epochs,
+            "elapsed_min": round((time.time() - train_start) / 60.0, 1),
+            "best_metric": best_metric,
+            "best_score": best["score"],
+            "epochs_no_improve": epochs_no_improve,
+            "new_best": new_best,
+        }
+        if verbose:
+            print(msg, flush=True)
+        if train_log_path is not None:
+            with train_log_path.open("a", encoding="utf-8") as f:
+                f.write(json.dumps(msg) + "\n")
+        if log_dir is not None:
+            write_json(log_dir / "history.json", history)
+
     def is_better(metric_name, val_bce, f1_05, f1_thr):
         if metric_name == "val_bce":
             if best["score"] is None:
@@ -775,8 +815,12 @@ def train_cca(
                 best["score"] = val_f1_thr
             best["state_dict"] = {k: v.cpu() for k, v in model.state_dict().items()}
             epochs_no_improve = 0
+            new_best = True
         else:
             epochs_no_improve += 1
+            new_best = False
+
+        log_epoch(epoch, history[-1], new_best=new_best)
 
         if trial is not None:
             trial.report(float(val_f1_05), epoch)
