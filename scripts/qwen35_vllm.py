@@ -64,21 +64,34 @@ class Qwen35VllmScorer:
         max_new_tokens: int = 128,
         gpu_memory_utilization: float = 0.85,
         max_model_len: int = 4096,
+        tensor_parallel_size: int = 1,
     ):
+        """
+        tensor_parallel_size:
+          - 1  → single-GPU engine (default; works for 2B on 12 GB)
+          - 2+ → model sharded across multiple GPUs (e.g., 4B on 2×12 GB)
+        """
         os.environ.setdefault("VLLM_WORKER_MULTIPROC_METHOD", "spawn")
         os.environ.setdefault("VLLM_USE_FLASHINFER_SAMPLER", "0")
+        # Avoid inductor calling nvcc during TP worker inference (WSL permission issues).
+        os.environ.setdefault("TORCHDYNAMO_DISABLE", "1")
+        os.environ.setdefault("TORCH_COMPILE_DISABLE", "1")
 
         from vllm import LLM, SamplingParams
 
+        # Prefix cache costs extra VRAM; disable for TP>1 on tight 12 GB cards.
+        enable_prefix_caching = tensor_parallel_size <= 1
+
         self.llm = LLM(
             model=str(model_dir),
-            tensor_parallel_size=1,
+            tensor_parallel_size=tensor_parallel_size,
             limit_mm_per_prompt={"video": 0},
-            enable_prefix_caching=True,
+            enable_prefix_caching=enable_prefix_caching,
             gpu_memory_utilization=gpu_memory_utilization,
             max_model_len=max_model_len,
             trust_remote_code=True,
             enforce_eager=True,
+            disable_custom_all_reduce=tensor_parallel_size > 1,
         )
         self.processor = load_processor(model_dir, local_files_only=True)
         self.sampling = SamplingParams(temperature=0.0, max_tokens=max_new_tokens)

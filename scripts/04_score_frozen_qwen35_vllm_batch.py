@@ -81,6 +81,12 @@ def main() -> None:
     parser.add_argument("--max_new_tokens", type=int, default=128)
     parser.add_argument("--request_batch_size", type=int, default=4)
     parser.add_argument("--gpu_memory_utilization", type=float, default=0.85)
+    parser.add_argument(
+        "--tensor_parallel_size",
+        type=int,
+        default=1,
+        help="vLLM tensor_parallel_size (set 2 for Qwen3.5-4B across 2 GPUs).",
+    )
     parser.add_argument("--resume", action="store_true", default=True)
     args = parser.parse_args()
 
@@ -121,10 +127,14 @@ def main() -> None:
 
     model_path = args.model_dir if args.model_dir is not None else model_root_for_variant(variant)
     model_dir = ensure_qwen35_snapshot(model_path, variant=variant)
+
+    # For 4B on 2×12 GB GPUs, recommend:
+    # CUDA_VISIBLE_DEVICES=0,1 --tensor_parallel_size 2 --request_batch_size 1
     scorer = Qwen35VllmScorer(
         model_dir,
         max_new_tokens=args.max_new_tokens,
         gpu_memory_utilization=args.gpu_memory_utilization,
+        tensor_parallel_size=args.tensor_parallel_size,
     )
 
     worker_id = args.shard_idx if args.num_shards > 1 else 0
