@@ -1,0 +1,22 @@
+{
+  "_meta": {
+    "description": "Wall-clock / GPU-hour training costs for CheXpert adapters",
+    "hardware_note": "Benchmarked timings on 1x RTX 4070 12GB unless source says otherwise. LoRA gpu_hours come from saved metrics.json (original training runs).",
+    "updated": "2026-07-12"
+  },
+  "runs": [
+    {"method": "vlm_mlp", "backend": "Qwen2-VL-2B", "epochs": 25, "trainable_params": null, "wall_seconds": 3.0, "wall_display": "~3 s", "gpu_hours": 0.0008, "source": "timed_rtx4070_2026-07-12", "notes": "timing protocol re-run"},
+    {"method": "mlgcn", "backend": "Qwen2-VL-2B", "epochs": 25, "trainable_params": 8577, "wall_seconds": 21.4, "wall_display": "~21 s", "gpu_hours": 0.0059, "source": "timed_rtx4070_2026-07-12", "notes": "original paper run used 30 epochs; timed at 25"},
+    {"method": "cbm_posthoc", "backend": "Qwen3.5-2B", "epochs": 25, "trainable_params": 667, "wall_seconds": 27.0, "wall_display": "~27 s", "gpu_hours": 0.0075, "source": "timed_rtx4070_2026-07-12"},
+    {"method": "cbm_posthoc", "backend": "Qwen3.5-4B", "epochs": 25, "trainable_params": 667, "wall_seconds": 31.9, "wall_display": "~32 s", "gpu_hours": 0.0089, "source": "original_run_2026-07-12"},
+    {"method": "cbm_labelfree", "backend": "Qwen3.5-4B", "epochs": 25, "trainable_params": 217, "wall_seconds": 552.1, "wall_display": "~9.2 min", "gpu_hours": 0.153, "source": "original_run_2026-07-12", "notes": "dominated by CLIP concept encode"},
+    {"method": "cbm_labelfree", "backend": "Qwen3.5-2B / Qwen2 (est.)", "epochs": 25, "trainable_params": 217, "wall_seconds": 540.0, "wall_display": "~9 min (est.)", "gpu_hours": 0.15, "source": "estimate_from_4b", "notes": "same CLIP encode bound; not re-timed"},
+    {"method": "cca", "backend": "Qwen3.5-2B", "epochs": 20, "trainable_params": 435261, "wall_seconds": 480.0, "wall_display": "8.0 min", "gpu_hours": 0.133, "source": "train.log elapsed_min", "notes": "training only; patch cache already present"},
+    {"method": "cca", "backend": "Qwen3.5-4B", "epochs": 60, "trainable_params": 435261, "wall_seconds": 1650.0, "wall_display": "27.5 min", "gpu_hours": 0.458, "source": "train.log elapsed_min", "notes": "training only; patch cache already present"},
+    {"method": "cca_optuna_trial27", "backend": "Qwen2-VL-2B", "epochs": 60, "trainable_params": 118891, "wall_seconds": null, "wall_display": "~5–15 min", "gpu_hours": null, "source": "docs/cca_reproduction.md (RTX 4060)", "notes": "documented range; no train.log on disk"},
+    {"method": "qformer_adapter", "backend": "Qwen2-VL-2B", "epochs": 30, "trainable_params": 263815, "wall_seconds": 946.9, "wall_display": "~15.8 min", "gpu_hours": 0.263, "source": "timed_rtx4070_2026-07-12", "notes": "includes first-time ViT patch encode for timing protocol"},
+    {"method": "qwen2vl_lora_r16_cls", "backend": "Qwen2-VL-2B", "epochs": 3, "trainable_params": 18475527, "wall_seconds": 12149.0, "wall_display": "3.37 GPU-h (~3h 22m)", "gpu_hours": 3.375, "source": "metrics.json gpu_hours", "peak_gpu_memory_mb": 8736},
+    {"method": "qwen2vl_lora_r16_sft", "backend": "Qwen2-VL-2B", "epochs": 1, "trainable_params": 18464768, "wall_seconds": 57824.0, "wall_display": "16.06 GPU-h (~16h 4m)", "gpu_hours": 16.062, "source": "metrics.json gpu_hours", "peak_gpu_memory_mb": 8829},
+    {"method": "qwen35_2b_lora_r16_cls", "backend": "Qwen3.5-2B", "epochs": null, "trainable_params": 10926087, "wall_seconds": 56742.0, "wall_display": "15.76 GPU-h (~15h 46m)", "gpu_hours": 15.762, "source": "metrics.json gpu_hours", "peak_gpu_memory_mb": 8637}
+  ]
+}

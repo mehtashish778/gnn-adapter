@@ -36,7 +36,7 @@ The fair Qwen2-VL-2B vs Qwen3.5-2B comparison is **2B vs 2B**. Qwen3.5-4B is an 
 
 **One-line verdict**
 
-- **In-domain CheXpert:** CCA still leads under Qwen3.5-2B; under **Qwen3.5-4B**, tiny **CBM post-hoc (667 params, F1 0.695)** edges CCA (0.690).
+- **In-domain CheXpert:** CCA still leads under Qwen3.5-2B; under **Qwen3.5-4B**, tiny **CBM post-hoc (667 params, ~32 s, F1 0.695)** edges CCA (0.690 / 27.5 min).
 - **Cross-site NIH:** ranking flips — **Qwen3.5-2B LoRA** is best; Qwen3.5-2B **frozen** alone already beats Qwen2-VL-2B CCA on F1 and crushes Qwen2-VL-2B frozen on AUROC.
 - **Backend upgrade:** moving from **Qwen2-VL-2B → Qwen3.5-2B** (same 2B scale) is the largest single lever we have seen (frozen CheXpert F1 **0.047 → 0.456**).
 
@@ -290,22 +290,42 @@ Canonical frozen NIH run: `vlm_zeroshot/nih/qwen35_2b_frozen_nih_n6000`
 
 ---
 
-## 6. Parameter / cost picture
+## 6. Parameter / cost picture (params **and** train time)
 
+Train time is a first-class cost metric alongside params. Sources: LoRA `metrics.json` `gpu_hours`; CCA `train.log` `elapsed_min`; CBM/MLGCN/MLP/QFormer wall-clock on **1× RTX 4070** (2026-07-12). Machine-readable: [`reports/comparison/train_time_summary.json`](reports/comparison/train_time_summary.json).
 
-| Method                 | Approx. trainable params | Role                              |
-| ---------------------- | ------------------------ | --------------------------------- |
-| Frozen VLM             | 0                        | Upper bound on “free” signal      |
-| CBM label-free         | 217                      | Tiny linear                       |
-| CBM post-hoc           | 667                      | Tiny                              |
-| CCA Optuna trial-27    | **118,891**              | Best Qwen2-VL-2B CheXpert leaderboard |
-| CCA fair-split default | ~435,261                 | Qwen2-VL-2B / Qwen3.5 fair comparison |
-| QFormer                | ~264K                    | Strong baseline                   |
-| Qwen3.5-2B LoRA r16    | ~10.9M                   | Best NIH                          |
-| Qwen2-VL-2B LoRA r16   | ~18.5M                   | Expensive PEFT baseline           |
+### CheXpert adapter cost leaderboard
 
+| Method | Backend | Test F1 @0.5 | Params | Train time | Peak VRAM | Source |
+|--------|---------|-------------:|-------:|-----------:|----------:|--------|
+| Frozen VLM | Qwen3.5-4B | 0.564 | 0 | **0** (no train) | — | scoring only |
+| VLM MLP | Qwen2-VL-2B | ~0.53† | tiny | **~3 s** | low | timed 4070 |
+| ML-GCN | Qwen2-VL-2B | 0.470 | 8,577 | **~21 s** | low | timed 4070 (25 ep) |
+| CBM post-hoc | Qwen3.5-2B | 0.662 | 667 | **~27 s** | low | timed 4070 |
+| CBM post-hoc | Qwen3.5-4B | **0.695** | 667 | **~32 s** | low | original run |
+| CBM label-free | Qwen3.5-4B | 0.409 | 217 | **~9.2 min** | CLIP | original run (encode-bound) |
+| CBM label-free | Qwen2 / Qwen3.5-2B | 0.476 / 0.660 | 217 | **~9 min (est.)** | CLIP | same encode bound as 4B |
+| CCA (fair default) | Qwen3.5-2B | 0.693 | 435,261 | **8.0 min** | mid | `train.log` |
+| CCA (fair default) | Qwen3.5-4B | 0.690 | 435,261 | **27.5 min** | mid | `train.log` (60 ep) |
+| CCA Optuna trial-27 | Qwen2-VL-2B | **0.707** | **118,891** | **~5–15 min** | mid | docs (RTX 4060) |
+| QFormer | Qwen2-VL-2B | 0.676 | 263,815 | **~15.8 min** | mid | timed 4070‡ |
+| LoRA r16 cls | Qwen2-VL-2B | 0.582 | 18,475,527 | **3.37 GPU-h (~3h 22m)** | ~8.7 GB | `metrics.json` |
+| LoRA r16 SFT | Qwen2-VL-2B | 0.655§ | 18,464,768 | **16.06 GPU-h (~16h)** | ~8.8 GB | `metrics.json` |
+| LoRA r16 cls | Qwen3.5-2B | 0.661 | 10,926,087 | **15.76 GPU-h (~15h 46m)** | ~8.6 GB | `metrics.json` |
 
-**Efficiency claim that still stands:** on CheXpert, CCA delivers competitive or better F1 than VLM LoRA at **~1–4%** of LoRA’s trainable parameter count (depending on CCA preset).
+† MLP F1 varies by seed/run; timing re-run used default splits.  
+‡ QFormer timing includes first-time ViT patch encode for the `timing` protocol cache. CCA times above are **train-only** with patches already cached.  
+§ SFT F1 inflated vs broken AUROC (parse failures).
+
+### Cost takeaways
+
+1. **CBM post-hoc is the efficiency extreme** — best/near-best F1 under Qwen3.5-4B with **667 params** and **~30 s** train.
+2. **CCA is still cheap** — minutes, not hours; Optuna trial-27 (~119K params) is the classic Qwen2 CheXpert winner.
+3. **LoRA is 10²–10³× slower** than CCA/CBM on wall-clock (hours vs seconds/minutes) and ~25–150× more trainable params.
+4. **Label-free CBM train time ≈ CLIP encode**, not the linear head — budget ~9 min whenever features are rebuilt.
+5. **QFormer** sits between CCA and LoRA on time (~16 min) with mid-size params (~264K).
+
+**Efficiency claim that still stands:** on CheXpert, CCA/CBM deliver competitive or better F1 than VLM LoRA at **≪1%** of LoRA’s trainable params and **≪5%** of LoRA’s GPU-hours.
 
 ---
 
@@ -336,12 +356,13 @@ Canonical frozen NIH run: `vlm_zeroshot/nih/qwen35_2b_frozen_nih_n6000`
 
 ## 8. Key takeaways for the paper / next talk
 
-1. **Adapter thesis (CheXpert):** A small concept-evidence adapter on frozen VLM scores can beat expensive VLM LoRA on F1 while using ≪1%–few% of the trainable parameters — especially under Optuna CCA + LoRA CLIP patches.
+1. **Adapter thesis (CheXpert):** A small concept-evidence adapter (or even post-hoc CBM) on frozen VLM scores can beat expensive VLM LoRA on F1 while using ≪1% of the trainable parameters **and minutes instead of hours** of GPU time.
 2. **Backend thesis:** Upgrading the frozen VLM (**Qwen2-VL-2B → Qwen3.5-2B**, same 2B scale) dominates most adapter gains; ignore this and you underestimate zero-shot and CBM ceilings.
 3. **Generalization thesis:** Under strong VLMs, **PEFT LoRA can win cross-site** even when CCA wins in-domain — do not claim a single ranking across settings.
 4. **Calibration thesis:** Always report AUROC/ECE alongside F1@0.5; Qwen2-VL-2B frozen F1 is not the right first impression of model quality.
 5. **Engineering thesis:** Multi-VLM work needs hard path isolation (`protocol` + dedicated outputs) or you will silently overwrite baselines.
-6. **4B CBM thesis:** With stronger VLM scores, **post-hoc CBM (667 params)** can match or beat CCA on CheXpert F1; label-free (CLIP-only) should be judged on AUROC, not only F1@0.5.
+6. **4B CBM thesis:** With stronger VLM scores, **post-hoc CBM (667 params, ~32 s)** can match or beat CCA on CheXpert F1; label-free (CLIP-only) should be judged on AUROC, not only F1@0.5.
+7. **Cost thesis:** Always report **train time + params** — LoRA’s 3–16 GPU-hours vs CCA’s ~8–28 min vs CBM’s ~30 s is as important as the F1 delta.
 
 ---
 
@@ -356,6 +377,8 @@ Canonical frozen NIH run: `vlm_zeroshot/nih/qwen35_2b_frozen_nih_n6000`
 | `[reports/comparison/lora16_vs_cca.md](reports/comparison/lora16_vs_cca.md)`                       | Qwen2 LoRA vs CCA                                                |
 | `[docs/combined_experiments_report.md](docs/combined_experiments_report.md)`                       | CCA Optuna / seeds / ablations (May 2026)                        |
 | `[docs/academic_report.md](docs/academic_report.md)`                                               | Paper-style methods + GNN narrative                              |
+| `[reports/comparison/train_time_summary.json](reports/comparison/train_time_summary.json)`         | Params + train-time cost table (JSON)                            |
+| `[reports/comparison/train_time_bench.jsonl](reports/comparison/train_time_bench.jsonl)`           | Raw 4070 wall-clock re-timing log                                |
 | Metrics JSON                                                                                       | `reports/comparison/qwen2_vs_qwen35_{chexpert,nih}_metrics.json` |
 
 
