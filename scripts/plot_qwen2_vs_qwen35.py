@@ -41,7 +41,7 @@ NIH_PATHS = {
     "Frozen VLM": {
         "Qwen2": REPO / "data/processed/experiments/vlm_zeroshot/nih/crosssite_eval",
         "Qwen3.5-2B": REPO
-        / "data/processed/experiments/vlm_zeroshot/nih/crosssite_eval_qwen35_2b",
+        / "data/processed/experiments/vlm_zeroshot/nih/qwen35_2b_frozen_nih_n6000",
     },
     "CBM post-hoc": {
         "Qwen2": REPO / "data/processed/experiments/cbm_posthoc/nih/crosssite_eval",

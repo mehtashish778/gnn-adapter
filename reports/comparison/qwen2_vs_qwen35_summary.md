@@ -49,7 +49,7 @@ NIH Qwen3.5 AUROC/AUPRC computed from `test_predictions.json` where not saved in
 
 | Method | Qwen2 run | Qwen3.5 run | n |
 |--------|-----------|-------------|--:|
-| Frozen VLM | `vlm_zeroshot/nih/crosssite_eval` | `vlm_zeroshot/nih/crosssite_eval_qwen35_2b` | 6000 |
+| Frozen VLM | `vlm_zeroshot/nih/crosssite_eval` | `vlm_zeroshot/nih/qwen35_2b_frozen_nih_n6000` | 6000 |
 | CBM post-hoc | `cbm_posthoc/nih/crosssite_eval` | `cbm_posthoc/nih/crosssite_eval_qwen35_2b` | 6000 |
 | CBM label-free | `cbm_labelfree/nih/crosssite_eval` | `cbm_labelfree/nih/crosssite_eval_qwen35_2b` | 6000 |
 | CCA | `cca/nih/crosssite_eval` | `cca/nih/crosssite_eval_qwen35_2b` | 6000 |

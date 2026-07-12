@@ -23,6 +23,18 @@
       "test_macro_ece": 0.26996088723650186,
       "test_macro_brier": 0.2902434716473671,
       "trainable_params": 0
+    },
+    "Qwen3.5-4B": {
+      "n_test": 9193,
+      "val_macro_f1@0.5": null,
+      "test_macro_f1@0.5": 0.5638547709703879,
+      "test_macro_f1@per_class_thr": null,
+      "test_subset_accuracy@0.5": 0.5095204513399154,
+      "test_macro_auroc": 0.6984527785832122,
+      "test_macro_auprc": 0.604974741780214,
+      "test_macro_ece": 0.1818925528489322,
+      "test_macro_brier": 0.20531265846192323,
+      "trainable_params": 0
     }
   },
   "CBM post-hoc": {
@@ -100,6 +112,18 @@
       "test_macro_auprc": 0.6012393349734171,
       "test_macro_ece": 0.13423778906591763,
       "test_macro_brier": 0.18856607414024595,
+      "trainable_params": 435261
+    },
+    "Qwen3.5-4B": {
+      "n_test": 9193,
+      "val_macro_f1@0.5": 0.6917892098426819,
+      "test_macro_f1@0.5": 0.6895152926445007,
+      "test_macro_f1@per_class_thr": 0.6559053659439087,
+      "test_subset_accuracy@0.5": 0.5494828224182129,
+      "test_macro_auroc": 0.7296431658001898,
+      "test_macro_auprc": 0.6284602866293884,
+      "test_macro_ece": 0.09787651717375877,
+      "test_macro_brier": 0.1684841541383931,
       "trainable_params": 435261
     }
   },

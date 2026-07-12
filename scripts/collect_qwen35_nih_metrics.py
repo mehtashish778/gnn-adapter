@@ -15,7 +15,8 @@ OUT = REPO / "reports/comparison/qwen2_vs_qwen35_nih_metrics.json"
 RUNS = {
     "Frozen VLM": {
         "Qwen2": REPO / "data/processed/experiments/vlm_zeroshot/nih/crosssite_eval",
-        "Qwen3.5-2B": REPO / "data/processed/experiments/vlm_zeroshot/nih/crosssite_eval_qwen35_2b",
+        # Prefer full 6k frozen re-score (AUROC/AUPRC saved); fall back to crosssite_eval name.
+        "Qwen3.5-2B": REPO / "data/processed/experiments/vlm_zeroshot/nih/qwen35_2b_frozen_nih_n6000",
     },
     "CBM post-hoc": {
         "Qwen2": REPO / "data/processed/experiments/cbm_posthoc/nih/crosssite_eval",

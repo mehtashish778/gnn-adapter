@@ -15,6 +15,7 @@ RUNS = {
     "Frozen VLM": {
         "Qwen2": REPO / "data/processed/splits/test_rows.json",
         "Qwen3.5-2B": REPO / "data/processed/splits/qwen35_qwen2_splits/test_rows.json",
+        "Qwen3.5-4B": REPO / "data/processed/splits/qwen35_4b_qwen2_splits/test_rows.json",
     },
     "CBM post-hoc": {
         "Qwen2": REPO / "data/processed/experiments/cbm_posthoc/default/cbm_posthoc_default",
@@ -30,6 +31,8 @@ RUNS = {
         "Qwen2": REPO / "data/processed/experiments/cca/default/cca_faithful",
         "Qwen3.5-2B": REPO
         / "data/processed/experiments/cca/qwen35_qwen2_splits/cca_qwen35_vllm_2b_qwen2_splits",
+        "Qwen3.5-4B": REPO
+        / "data/processed/experiments/cca/qwen35_4b_qwen2_splits/cca_qwen35_vllm_4b_qwen2_splits",
     },
     "LoRA r16": {
         "Qwen2": REPO / "data/processed/experiments/qwen2vl_lora_r16/default/qwen2vl_lora_r16_v2",
@@ -234,7 +237,11 @@ def collect() -> dict:
                 metrics = _load_json(source / "metrics.json")
             elif source.name == "metrics.json":
                 metrics = _load_json(source)
-            probs, y_true, y_mask = _resolve_arrays(source)
+            try:
+                probs, y_true, y_mask = _resolve_arrays(source)
+            except FileNotFoundError:
+                # Backend not yet evaluated for this method (e.g. 4B CBM/LoRA pending).
+                continue
             row = {"n_test": int(len(y_true))}
             for key in METRIC_KEYS:
                 row[key] = _get_metric(source, key, metrics, probs, y_true, y_mask)

@@ -12,7 +12,7 @@ Fair comparison on the **same CheXpert splits** (Qwen2 path/label protocol; Qwen
 **Collect:** `scripts/compare_qwen2_qwen35_chexpert.py` · `scripts/collect_qwen35_nih_metrics.py`  
 **Plots:** `scripts/plot_qwen2_vs_qwen35_chexpert.py`
 
-**Completion status:** All 5 methods evaluated on CheXpert (n=9,197) and NIH (n=6,000). Qwen3.5 LoRA NIH cross-site confirmed — 6,000 predictions in `qwen35_2b_lora_r16/nih/crosssite_eval_qwen35_2b`.
+**Completion status:** All 5 methods evaluated for Qwen2-VL and Qwen3.5-2B on CheXpert (n=9,197) and NIH (n=6,000). Qwen3.5 LoRA NIH cross-site confirmed — 6,000 predictions in `qwen35_2b_lora_r16/nih/crosssite_eval_qwen35_2b`. **Qwen3.5-4B** is partially evaluated: frozen VLM baseline and CCA are done on the fair CheXpert splits (test n=9,193); CBM (post-hoc / label-free), LoRA, and NIH cross-site for 4B are still pending. See the "Qwen3.5-2B → 4B scaling" section in Part A.
 
 ---
 
@@ -106,28 +106,32 @@ Fair comparison on the **same CheXpert splits** (Qwen2 path/label protocol; Qwen
 |--------|---------|-------:|--------:|--------:|-----------:|------:|------:|----:|------:|-------:|
 | Frozen VLM | Qwen2 | — | 0.047 | — | 0.254 | 0.492 | 0.446 | 0.384 | 0.376 | 0 |
 | Frozen VLM | Qwen3.5-2B | — | 0.456 | — | 0.396 | 0.670 | 0.588 | 0.270 | 0.290 | 0 |
+| Frozen VLM | Qwen3.5-4B | — | 0.564 | — | 0.510 | 0.698 | 0.605 | 0.182 | 0.205 | 0 |
 | CBM post-hoc | Qwen2 | 0.638 | 0.621 | — | 0.415 | 0.542 | 0.472 | 0.115 | 0.213 | 667 |
 | CBM post-hoc | Qwen3.5-2B | 0.670 | 0.662 | — | 0.530 | 0.716 | 0.621 | 0.096 | 0.173 | 667 |
 | CBM label-free | Qwen2 | 0.500 | 0.476 | — | 0.353 | 0.616 | 0.528 | 0.121 | 0.213 | 217 |
 | CBM label-free | Qwen3.5-2B | 0.664 | 0.660 | — | 0.409 | 0.614 | 0.526 | 0.118 | 0.214 | 217 |
 | CCA | Qwen2 | 0.677 | 0.674 | 0.655 | 0.527 | 0.666 | 0.575 | 0.151 | 0.205 | 435,261 |
 | CCA | Qwen3.5-2B | 0.699 | 0.693 | 0.661 | 0.539 | 0.701 | 0.601 | 0.134 | 0.189 | 435,261 |
+| CCA | Qwen3.5-4B | 0.692 | 0.690 | 0.656 | 0.549 | 0.730 | 0.628 | 0.098 | 0.168 | 435,261 |
 | LoRA r16 | Qwen2 | 0.589 | 0.582 | — | 0.499 | 0.685 | 0.591 | 0.108 | 0.182 | 18,475,527 |
 | LoRA r16 | Qwen3.5-2B | 0.680 | 0.661 | — | 0.579 | 0.757 | 0.666 | 0.075 | 0.155 | 10,926,087 |
+
+> **Qwen3.5-4B (partial).** Only the frozen VLM baseline and CCA are evaluated for 4B so far; CBM (post-hoc / label-free) and LoRA are still pending. The 4B test split has 9,193 rows (27 parse failures dropped from the 62,332-image subset) versus 9,197 for the 2B / Qwen2 splits, so its numbers are on a near-identical but not byte-identical test set.
 
 ---
 
 ## Experiment paths
 
-| Method | Qwen2-VL run | Qwen3.5-2B run |
-|--------|--------------|----------------|
-| Frozen VLM | `data/processed/splits/test_rows.json` (x_probs) | `data/processed/splits/qwen35_qwen2_splits/test_rows.json` |
-| CBM post-hoc | `cbm_posthoc/default/cbm_posthoc_default` | `cbm_posthoc/default/cbm_posthoc_qwen35_qwen2_splits` |
-| CBM label-free | `cbm_labelfree/default/cbm_labelfree_default` | `cbm_labelfree/default/cbm_labelfree_qwen35_qwen2_splits` |
-| CCA | `cca/default/cca_faithful` | `cca/qwen35_qwen2_splits/cca_qwen35_vllm_2b_qwen2_splits` |
-| LoRA r16 | `qwen2vl_lora_r16/default/qwen2vl_lora_r16_v2` | `qwen35_2b_lora_r16/default/qwen35_2b_lora_r16_qwen2_splits` |
+| Method | Qwen2-VL run | Qwen3.5-2B run | Qwen3.5-4B run |
+|--------|--------------|----------------|----------------|
+| Frozen VLM | `data/processed/splits/test_rows.json` (x_probs) | `data/processed/splits/qwen35_qwen2_splits/test_rows.json` | `data/processed/splits/qwen35_4b_qwen2_splits/test_rows.json` |
+| CBM post-hoc | `cbm_posthoc/default/cbm_posthoc_default` | `cbm_posthoc/default/cbm_posthoc_qwen35_qwen2_splits` | — (pending) |
+| CBM label-free | `cbm_labelfree/default/cbm_labelfree_default` | `cbm_labelfree/default/cbm_labelfree_qwen35_qwen2_splits` | — (pending) |
+| CCA | `cca/default/cca_faithful` | `cca/qwen35_qwen2_splits/cca_qwen35_vllm_2b_qwen2_splits` | `cca/qwen35_4b_qwen2_splits/cca_qwen35_vllm_4b_qwen2_splits` |
+| LoRA r16 | `qwen2vl_lora_r16/default/qwen2vl_lora_r16_v2` | `qwen35_2b_lora_r16/default/qwen35_2b_lora_r16_qwen2_splits` | — (pending) |
 
-All paths under `data/processed/experiments/` unless noted.
+All paths under `data/processed/experiments/` unless noted. The 4B frozen VLM scores come from vLLM tensor-parallel scoring in `data/outputs_vlm_qwen35_4b_qwen2subset_tp2/`, aligned to `data/processed/multilabel/aligned_vlm_targets_qwen35_4b_qwen2subset.json`.
 
 ---
 
@@ -141,6 +145,31 @@ All paths under `data/processed/experiments/` unless noted.
 
 ---
 
+## Qwen3.5-2B → 4B scaling (frozen VLM + CCA)
+
+Only the frozen VLM baseline and CCA are evaluated for the 4B model so far (CBM and LoRA are pending). Both use the same fair CheXpert splits (4B test n = 9,193 after dropping 27 parse failures; 2B test n = 9,197).
+
+| Metric | Method | Qwen3.5-2B | Qwen3.5-4B | Δ (4B − 2B) |
+|--------|--------|-----------:|-----------:|------------:|
+| Test F1 @0.5 | Frozen VLM | 0.456 | **0.564** | +0.108 |
+| Test F1 @0.5 | CCA | **0.693** | 0.690 | −0.003 |
+| Test AUROC | Frozen VLM | 0.670 | **0.698** | +0.028 |
+| Test AUROC | CCA | 0.701 | **0.730** | +0.029 |
+| Test AUPRC | Frozen VLM | 0.588 | **0.605** | +0.017 |
+| Test AUPRC | CCA | 0.601 | **0.628** | +0.027 |
+| Macro ECE | Frozen VLM | 0.270 | **0.182** | −0.088 |
+| Macro ECE | CCA | 0.134 | **0.098** | −0.036 |
+| Macro Brier | Frozen VLM | 0.290 | **0.205** | −0.085 |
+| Macro Brier | CCA | 0.189 | **0.168** | −0.021 |
+
+**Takeaways for 4B:**
+
+1. **Frozen VLM benefits most from scale** — 4B lifts zero-shot F1 by +0.108 and markedly improves calibration (ECE 0.270 → 0.182), consistent with the larger model producing better-calibrated raw probabilities.
+2. **CCA F1 is saturated** — CCA test F1 is essentially tied (0.693 vs 0.690), but 4B still improves ranking quality (AUROC +0.029, AUPRC +0.027) and calibration (ECE 0.134 → 0.098). The learned adapter already extracts most of the signal, so the extra VLM capacity mainly sharpens probabilities rather than raising thresholded F1.
+3. **Efficiency is unchanged** — CCA trains the same ~435K parameters regardless of VLM size.
+
+---
+
 # Part B — NIH cross-site (n = 6,000)
 
 CheXpert-trained models evaluated on NIH ChestX-ray14. **Same 6k images** for both backends (identical paths/labels).
@@ -151,7 +180,7 @@ CheXpert-trained models evaluated on NIH ChestX-ray14. **Same 6k images** for bo
 | Frozen / CBM / CCA (Qwen3.5) | `test_rows_qwen35_2b_n6000.json` | `run_crosssite_nih_qwen35.py` |
 | LoRA (both) | `test_rows_n6000.json` | `score_qwen2vl_lora.py` / `score_qwen35_lora.py` |
 
-> **AUROC note:** Qwen3.5 NIH `metrics.json` files often omit AUROC/AUPRC (NaN). Values below for Qwen3.5 are **computed from `test_predictions.json`** unless saved directly. Refresh: `python scripts/collect_qwen35_nih_metrics.py`.
+> **AUROC note:** Older Qwen3.5 NIH `metrics.json` files sometimes omit AUROC/AUPRC (NaN). Frozen VLM now saves both from `qwen35_2b_frozen_nih_n6000`. Other methods still use values **computed from `test_predictions.json`** when missing. Refresh: `python scripts/collect_qwen35_nih_metrics.py`.
 
 ## NIH test macro F1 @0.5
 
@@ -179,7 +208,7 @@ CheXpert-trained models evaluated on NIH ChestX-ray14. **Same 6k images** for bo
 
 | Method | Qwen2-VL | Qwen3.5-2B | Δ (3.5 − 2) | Winner |
 |--------|---------:|-----------:|------------:|--------|
-| Frozen VLM | 0.057 | **0.135** | +0.078 | Qwen3.5 |
+| Frozen VLM | 0.057 | **0.131** | +0.074 | Qwen3.5 |
 | CBM post-hoc | 0.056 | **0.117** | +0.061 | Qwen3.5 |
 | CBM label-free | 0.066 | **0.069** | +0.003 | Qwen3.5 |
 | CCA | **0.105** | 0.102 | −0.003 | ~tie |
@@ -212,7 +241,7 @@ CheXpert-trained models evaluated on NIH ChestX-ray14. **Same 6k images** for bo
 | Method | Backend | Test F1 | F1 @thr | Subset acc | AUROC | AUPRC | ECE | Brier | Params | n |
 |--------|---------|--------:|--------:|-----------:|------:|------:|----:|------:|-------:|--:|
 | Frozen VLM | Qwen2 | 0.059 | 0.086 | 0.020 | 0.524 | 0.057 | 0.279 | 0.196 | 0 | 6000 |
-| Frozen VLM | Qwen3.5-2B | 0.147 | 0.125 | 0.672 | 0.746† | 0.135† | 0.099 | 0.081 | 0 | 6000 |
+| Frozen VLM | Qwen3.5-2B | 0.147 | 0.125 | — | 0.746 | 0.131 | 0.099 | 0.081 | 0 | 6000 |
 | CBM post-hoc | Qwen2 | 0.053 | 0.086 | — | 0.489 | 0.056 | 0.431 | 0.247 | 667 | 6000 |
 | CBM post-hoc | Qwen3.5-2B | 0.135 | 0.102 | — | 0.653† | 0.117† | 0.298 | 0.181 | 667 | 6000 |
 | CBM label-free | Qwen2 | 0.052 | 0.086 | — | 0.539 | 0.066 | 0.441 | 0.245 | 217 | 6000 |
@@ -228,7 +257,7 @@ CheXpert-trained models evaluated on NIH ChestX-ray14. **Same 6k images** for bo
 
 | Method | Qwen2-VL NIH run | Qwen3.5-2B NIH run |
 |--------|------------------|---------------------|
-| Frozen VLM | `vlm_zeroshot/nih/crosssite_eval` | `vlm_zeroshot/nih/crosssite_eval_qwen35_2b` |
+| Frozen VLM | `vlm_zeroshot/nih/crosssite_eval` | `vlm_zeroshot/nih/qwen35_2b_frozen_nih_n6000` |
 | CBM post-hoc | `cbm_posthoc/nih/crosssite_eval` | `cbm_posthoc/nih/crosssite_eval_qwen35_2b` |
 | CBM label-free | `cbm_labelfree/nih/crosssite_eval` | `cbm_labelfree/nih/crosssite_eval_qwen35_2b` |
 | CCA | `cca/nih/crosssite_eval` | `cca/nih/crosssite_eval_qwen35_2b` |
@@ -238,7 +267,7 @@ All paths under `data/processed/experiments/`. NIH test rows: `data/processed/sp
 
 ## NIH takeaways
 
-1. **Qwen3.5 wins NIH F1 on frozen VLM, both CBMs, and LoRA** — largest gain on frozen (+0.088 F1, +0.115 Brier improvement).
+1. **Qwen3.5 wins NIH F1 on frozen VLM, both CBMs, and LoRA** — largest gain on frozen (+0.088 F1, +0.114 Brier improvement; run `qwen35_2b_frozen_nih_n6000`).
 2. **Qwen3.5 LoRA is best overall on NIH (0.186 F1)** — beats CCA (~0.133–0.136), frozen (0.147), and all CBM variants. Opposite of CheXpert, where CCA leads.
 3. **CCA ~ tied on NIH F1 and AUROC** (Qwen2 0.136/0.633 vs Qwen3.5 0.133/0.630).
 4. **LoRA generalizes best cross-site for Qwen3.5** (0.186 F1, 0.741 AUROC) — +0.072 F1 vs Qwen2 LoRA on same 6k set.

@@ -2,6 +2,8 @@
 
 Protocol: `nih`. CCA seed group: `lora_r8_trial27`.
 
+> **Qwen3.5-2B frozen VLM** (same 6k subset): F1@0.5 = **0.1471**, AUROC = **0.7455** (`qwen35_2b_frozen_nih_n6000`). See [`crosssite_nih.md`](crosssite_nih.md) and [`qwen2_vs_qwen35_nih_metrics.json`](qwen2_vs_qwen35_nih_metrics.json). Tables below remain Qwen2-VL baselines.
+
 ## Test macro-F1 @0.5 (bootstrap 95% CI)
 
 | Model | mean F1 | 95% CI | n | runs |
